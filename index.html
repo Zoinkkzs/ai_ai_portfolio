@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nguyễn Nhã Nguyễn Nhã Thanh Huy - Portfolio</title>
+    <title>Thanh Huy - Portfolio</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,24 +49,29 @@
         }
     </script>
     <style>
-        @keyframes wave {
-            0% { transform: translateX(0) translateZ(0) scaleY(1) }
-            50% { transform: translateX(-25%) translateZ(0) scaleY(0.85) }
-            100% { transform: translateX(-50%) translateZ(0) scaleY(1) }
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
         }
-        .wave-bg {
-            background-repeat: repeat-x;
-            background-size: 50% 100%;
-            opacity: 0.1;
-            animation: wave 15s linear infinite;
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #06bcf9;
+            cursor: pointer;
+            box-shadow: 0 0 10px #06bcf9;
+            transition: all 0.2s;
         }
-        .bg-stars {
-            background-image: 
-                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-            background-size: 550px 550px, 350px 350px, 250px 250px;
-            background-position: 0 0, 40px 60px, 130px 270px;
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #fff;
+            box-shadow: 0 0 15px #fff, 0 0 30px #06bcf9;
         }
     </style>
   </head>
@@ -75,9 +80,13 @@
 
     <!-- Main Application Logic -->
     <script type="text/babel">
-      const { useState, useEffect } = React;
+      const { useState, useEffect, useRef } = React;
 
       // --- Constants & Types ---
+
+      // CONFIGURATION: Change this to your GitHub username to automatically use your GitHub avatar
+      const GITHUB_USERNAME = "Zoinkkzs"; 
+      const PROFILE_AVATAR = `https://github.com/${GITHUB_USERNAME}.png`;
 
       const NAV_ITEMS = [
         { label: 'Home', href: '#home' },
@@ -123,6 +132,214 @@
         { icon: 'architecture', title: 'Design', desc: 'Figma, Blender 3D', color: 'text-primary' },
       ];
 
+      // --- Helper Components ---
+
+      const BlackHoleBackground = ({ progress }) => {
+        const canvasRef = useRef(null);
+        const angleRef = useRef(0); // Store accumulated rotation angle
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          
+          const render = () => {
+            // Setup canvas
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            // Clear background
+            ctx.fillStyle = '#020204';
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw Stars
+            // Use time-invariant noise for stars so they don't flicker on re-render, 
+            // but we re-generate them here for simplicity since performance is okay for this count.
+            for(let i=0; i<150; i++) {
+                const x = (Math.sin(i * 123.456) * 9999) % w;
+                const y = (Math.cos(i * 654.321) * 9999) % h;
+                const size = (Math.sin(i) + 1.5) * 0.8;
+                const opacity = (Math.cos(i) + 1) * 0.3 + 0.1;
+                ctx.fillStyle = `rgba(255,255,255,${Math.abs(opacity)})`;
+                ctx.beginPath();
+                ctx.arc(Math.abs(x), Math.abs(y), size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // --- Simulation Logic ---
+            const p = progress; // 0 to 1
+            const merged = p > 0.98;
+            
+            // Dynamics
+            const maxSep = Math.min(w, h) * 0.25;
+            
+            // Separation decreases as progress increases
+            // Orbit radius is half the separation distance
+            const currentOrbitRadius = merged ? 0 : (maxSep/2) * (1 - p);
+            
+            // Rotation speed increases exponentially as they get closer (Kepler-ish)
+            // Base speed + acceleration based on proximity
+            const rotationSpeed = 0.02 + (Math.pow(p, 3) * 0.15);
+            
+            // Update accumulated angle
+            angleRef.current += rotationSpeed;
+            const angle = angleRef.current;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Draw Gravitational Waves
+            // Ripples that emanate from center, frequency increases with speed
+            if (!merged) {
+                const numRings = 8;
+                const maxRad = Math.max(w, h) * 0.6;
+                const time = Date.now() / 1000;
+                
+                ctx.save();
+                // Rotate waves slightly differently to create interference pattern feel
+                ctx.rotate(angle * 0.2); 
+                
+                for(let i=0; i<numRings; i++) {
+                    const waveBase = (i / numRings);
+                    // Waves move outward
+                    const waveOffset = (time * (0.1 + p * 0.4)) % 1; 
+                    const waveR = ((waveBase + waveOffset) % 1) * maxRad;
+                    
+                    // Intensity fades out at edges, and increases with progress (energy output)
+                    const fade = 1 - (waveR / maxRad);
+                    const intensity = (p * 0.6 + 0.1) * fade;
+                    
+                    ctx.strokeStyle = `rgba(100, 100, 255, ${intensity})`;
+                    ctx.lineWidth = 1 + p * 5 * fade;
+                    
+                    ctx.beginPath();
+                    // Slight elliptical distortion based on rotation speed
+                    const distortion = p * 0.1;
+                    ctx.ellipse(0, 0, waveR, waveR * (1 - distortion), angle * -1, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else {
+                // Post-Merger Shockwave Ring
+                const shockTime = (Date.now() / 20) % 200; // Continuous expanding rings
+                const maxShock = Math.max(w,h);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * (1 - shockTime/200)})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, shockTime * 5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // --- Draw Black Holes ---
+            
+            const drawSingleBH = (x, y, r, color, isMergedEntity) => {
+                 // Accretion Disk (Glow)
+                const diskRadius = r * (isMergedEntity ? 5 : 3);
+                const grad = ctx.createRadialGradient(x, y, r * 0.8, x, y, diskRadius);
+                grad.addColorStop(0, '#000'); // Horizon
+                grad.addColorStop(0.2, color); // Inner hot disk
+                grad.addColorStop(1, 'transparent'); // Outer edge
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(x, y, diskRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Photon Ring (The bright circle)
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = isMergedEntity ? 4 : 2;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = isMergedEntity ? 30 : 15;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Event Horizon (Pitch Black Center)
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(x, y, r * 0.95, 0, Math.PI * 2);
+                ctx.fill();
+            };
+
+            const baseRadius = 20;
+
+            if (merged) {
+                // Merged State
+                // Little shake effect
+                const shake = (Math.random() - 0.5) * 3;
+                drawSingleBH(shake, shake, baseRadius * 1.6, 'rgba(150, 200, 255, 0.9)', true);
+                
+                // Energy jets
+                ctx.save();
+                ctx.rotate(Math.PI / 4);
+                ctx.strokeStyle = 'rgba(6, 188, 249, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -baseRadius * 2);
+                ctx.lineTo(0, -baseRadius * 20 - Math.random()*50);
+                ctx.moveTo(0, baseRadius * 2);
+                ctx.lineTo(0, baseRadius * 20 + Math.random()*50);
+                ctx.stroke();
+                ctx.restore();
+
+            } else {
+                // Binary State
+                const x1 = Math.cos(angle) * currentOrbitRadius;
+                const y1 = Math.sin(angle) * currentOrbitRadius;
+                
+                const x2 = Math.cos(angle + Math.PI) * currentOrbitRadius;
+                const y2 = Math.sin(angle + Math.PI) * currentOrbitRadius;
+
+                const bh1Color = 'rgba(6, 188, 249, 0.8)'; // Blue
+                const bh2Color = 'rgba(168, 85, 247, 0.8)'; // Purple
+
+                drawSingleBH(x1, y1, baseRadius, bh1Color, false);
+                drawSingleBH(x2, y2, baseRadius, bh2Color, false);
+
+                // Matter Bridge when close
+                if (p > 0.5) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x1 * 0.8, y1 * 0.8);
+                    
+                    // Bezier control point in center creates the bridge
+                    const cpX = (Math.random()-0.5) * 10;
+                    const cpY = (Math.random()-0.5) * 10;
+                    
+                    ctx.quadraticCurveTo(cpX, cpY, x2 * 0.8, y2 * 0.8);
+                    
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${p * 0.8})`;
+                    ctx.lineWidth = p * 6;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            ctx.restore();
+          };
+
+          const animId = requestAnimationFrame(function loop() {
+              render();
+              requestAnimationFrame(loop);
+          });
+
+          const handleResize = () => render();
+          window.addEventListener('resize', handleResize);
+
+          return () => {
+            window.removeEventListener('resize', handleResize);
+            cancelAnimationFrame(animId);
+          };
+        }, [progress]);
+
+        return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full object-cover" />;
+      };
+
       // --- Components ---
 
       const Navbar = () => {
@@ -143,10 +360,10 @@
               <div className="flex items-center gap-4">
                 <div 
                   className="h-10 w-10 rounded-full bg-cover bg-center ring-2 ring-primary/50 shadow-neon"
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop')` }}
-                  aria-label="Portrait of Nguyễn Nhã Thanh Huy"
+                  style={{ backgroundImage: `url('${PROFILE_AVATAR}')` }}
+                  aria-label="Portrait of Thanh Huy"
                 />
-                <span className="text-lg font-bold tracking-tight text-white hidden sm:block">Nguyễn Nhã Thanh Huy</span>
+                <span className="text-lg font-bold tracking-tight text-white hidden sm:block">Thanh Huy</span>
               </div>
               
               <div className="hidden md:flex items-center gap-8">
@@ -191,43 +408,80 @@
       };
 
       const Hero = () => {
-        return (
-          <section id="home" className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6 bg-gradient-to-b from-background-dark to-[#050a0d]">
-            <div className="absolute inset-0 z-0 pointer-events-none">
-              {/* Abstract Wave generated via CSS mask or simple background image for specific look */}
-              <div 
-                  className="wave-bg absolute bottom-0 h-80 w-[200%] opacity-30 mix-blend-screen"
-                  style={{ 
-                      backgroundImage: 'url("https://upload.wikimedia.org/wikipedia/commons/1/1a/Wave_Pattern.svg")',
-                      filter: 'hue-rotate(180deg) brightness(1.2)'
-                  }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-void"></div>
-            </div>
+        const [timeData, setTimeData] = useState(0); // Slider value 0-100
+        const [isControlOpen, setIsControlOpen] = useState(true);
 
-            <div className="relative z-10 mx-auto max-w-5xl text-center mt-10">
+        return (
+          <section id="home" className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6 bg-[#020204]">
+            
+            {/* Background Simulation */}
+            <BlackHoleBackground progress={timeData / 100} />
+
+            {/* Content Gradient Overlay to ensure text readability */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark/50 pointer-events-none"></div>
+
+            <div className="relative z-10 mx-auto max-w-5xl text-center mt-10 pointer-events-none">
               <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary/80">Student Portfolio 2024</p>
-              <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-7xl lg:text-8xl">
+              <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-7xl lg:text-8xl drop-shadow-2xl">
                 Bridging the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-cyan-300 to-white">Abyss</span> <br/>
                 to the <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary via-purple-400 to-white">Cosmos</span>
               </h1>
-              <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-slate-400 sm:text-xl">
-                I'm <span className="text-white font-medium">Nguyễn Nhã Thanh Huy</span>. I blend organic chemistry concepts with deep-space aesthetics to create immersive digital experiences.
+              <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-slate-300 sm:text-xl drop-shadow-md">
+                I'm <span className="text-white font-medium">Thanh Huy</span>. I blend organic chemistry concepts with deep-space aesthetics to create immersive digital experiences.
               </p>
+            </div>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a href="#projects" className="group relative flex h-12 items-center justify-center overflow-hidden rounded-full bg-primary px-8 text-sm font-bold text-[#020204] transition-all hover:bg-cyan-300 hover:shadow-neon">
-                  <span className="relative z-10 mr-2">Explore Universe</span>
-                  <span className="material-symbols-outlined relative z-10 text-[20px] transition-transform group-hover:translate-x-1">rocket_launch</span>
-                </a>
-                <a href="#contact" className="flex h-12 items-center justify-center rounded-full border border-slate-700 px-8 text-sm font-bold text-white transition-colors hover:border-secondary hover:text-secondary hover:shadow-neon-purple bg-surface-dark/50 backdrop-blur-sm">
-                  Contact Me
-                </a>
-              </div>
+            <div className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <a href="#projects" className="group relative flex h-12 items-center justify-center overflow-hidden rounded-full bg-primary px-8 text-sm font-bold text-[#020204] transition-all hover:bg-cyan-300 hover:shadow-neon">
+                <span className="relative z-10 mr-2">Explore Universe</span>
+                <span className="material-symbols-outlined relative z-10 text-[20px] transition-transform group-hover:translate-x-1">rocket_launch</span>
+              </a>
+              <a href="#contact" className="flex h-12 items-center justify-center rounded-full border border-slate-700 px-8 text-sm font-bold text-white transition-colors hover:border-secondary hover:text-secondary hover:shadow-neon-purple bg-surface-dark/50 backdrop-blur-sm">
+                Contact Me
+              </a>
             </div>
 
-            <div className="absolute bottom-10 animate-bounce text-slate-500">
-              <span className="material-symbols-outlined text-3xl">keyboard_arrow_down</span>
+            {/* Minimizable Time Control Bar */}
+            <div className="absolute bottom-10 left-0 right-0 mx-auto w-full max-w-md z-30 px-6 flex justify-center">
+                {isControlOpen ? (
+                  <div className="w-full bg-surface-dark/60 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="flex justify-between items-center mb-3">
+                          <div className="flex justify-between text-[10px] text-primary uppercase font-mono tracking-widest gap-4">
+                              <span>Binary System</span>
+                              <span>Singularity</span>
+                          </div>
+                          <button 
+                            onClick={() => setIsControlOpen(false)}
+                            className="text-slate-400 hover:text-white transition-colors"
+                            title="Minimize Controls"
+                          >
+                            <span className="material-symbols-outlined text-sm">remove</span>
+                          </button>
+                      </div>
+                      <input 
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          value={timeData} 
+                          onChange={(e) => setTimeData(Number(e.target.value))}
+                          className="range-slider"
+                      />
+                      <div className="flex justify-between items-center mt-2">
+                           <span className="text-[10px] text-slate-400 font-mono">T-Minus: {(100 - timeData).toFixed(0)} units</span>
+                           <span className={`text-[10px] font-mono transition-colors ${timeData > 95 ? 'text-red-500 animate-pulse font-bold' : 'text-slate-500'}`}>
+                              {timeData > 95 ? 'CRITICAL: MERGER IMMINENT' : 'STATUS: STABLE ORBIT'}
+                           </span>
+                      </div>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setIsControlOpen(true)}
+                    className="flex items-center gap-2 bg-surface-dark/40 backdrop-blur-sm border border-white/10 hover:border-primary/50 text-slate-300 hover:text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-neon"
+                  >
+                    <span className="material-symbols-outlined text-sm">tune</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Initialize Controls</span>
+                  </button>
+                )}
             </div>
           </section>
         );
@@ -374,7 +628,7 @@
         return (
           <footer className="border-t border-white/5 bg-void py-10 px-6 text-center">
             <p className="text-slate-600 text-sm font-mono">
-              &copy; 2024 Nguyễn Nhã Thanh Huy. <span className="text-slate-700 mx-2">|</span> Built in the void with <span className="text-secondary">♥</span> and Tailwind CSS.
+              &copy; 2024 Thanh Huy. <span className="text-slate-700 mx-2">|</span> Built in the void with <span className="text-secondary">♥</span> and Tailwind CSS.
             </p>
           </footer>
         );
