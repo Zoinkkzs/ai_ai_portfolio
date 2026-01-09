@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thanh Huy - Portfolio</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#06bcf9", // Neon Blue
+                        "secondary": "#a855f7", // Neon Purple
+                        "background-light": "#f5f8f8",
+                        "background-dark": "#0a1116", // Deep navy/midnight start
+                        "void": "#020204", // Deep space black
+                        "surface-dark": "#111820",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "sans": ["Space Grotesk", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    },
+                    boxShadow: {
+                        "neon": "0 0 15px rgba(6, 188, 249, 0.3)",
+                        "neon-hover": "0 0 25px rgba(6, 188, 249, 0.5)",
+                        "neon-purple": "0 0 15px rgba(168, 85, 247, 0.3)",
+                        "neon-purple-hover": "0 0 25px rgba(168, 85, 247, 0.6)",
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        @keyframes wave {
+            0% { transform: translateX(0) translateZ(0) scaleY(1) }
+            50% { transform: translateX(-25%) translateZ(0) scaleY(0.85) }
+            100% { transform: translateX(-50%) translateZ(0) scaleY(1) }
+        }
+        .wave-bg {
+            background-repeat: repeat-x;
+            background-size: 50% 100%;
+            opacity: 0.1;
+            animation: wave 15s linear infinite;
+        }
+        .bg-stars {
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            background-position: 0 0, 40px 60px, 130px 270px;
+        }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+</head>
+  <body class="bg-background-light dark:bg-background-dark text-[#101e23] dark:text-white antialiased selection:bg-secondary selection:text-white font-display">
+    <div id="root"></div>
+  </body>
+</html>
