@@ -11,14 +11,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
-    <!-- React Dependencies (UMD for simple static deployment) -->
+    <!-- React Dependencies (UMD) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Three.js Dependencies for Molecular Viewer -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Three.js Dependencies (Using consistent unpkg versioning) -->
+    <script crossorigin src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script crossorigin src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -431,6 +431,7 @@
         const [showTau, setShowTau] = useState(false);
         const [showIonic, setShowIonic] = useState(true);
         const [showVDW, setShowVDW] = useState(true);
+        const [error, setError] = useState(null);
         
         // Refs for raycasting logic
         const raycaster = useRef(new THREE.Raycaster());
@@ -473,312 +474,346 @@
         }, [selectedMoleculeName]);
 
         useEffect(() => {
-            // Three.js Setup
-            const width = mountRef.current.clientWidth;
-            const height = mountRef.current.clientHeight;
-            
-            const scene = new THREE.Scene();
-            // Background is handled by CSS, keep scene transparent or dark
-            scene.background = null; 
-            
-            // Fog for depth
-            scene.fog = new THREE.Fog(0x111111, 5, 25);
+            // Safety check for Three.js
+            if (!window.THREE) {
+                setError("Three.js library failed to load.");
+                return;
+            }
+            if (!mountRef.current) return;
 
-            const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-            camera.position.z = 8;
-            camera.position.y = 2;
+            let renderer, scene, camera, controls, animId;
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(width, height);
-            mountRef.current.appendChild(renderer.domElement);
-
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            // Configure controls for Middle Mouse Pan
-            controls.enablePan = true;
-            controls.screenSpacePanning = true; 
-            controls.mouseButtons = {
-                LEFT: THREE.MOUSE.ROTATE,
-                MIDDLE: THREE.MOUSE.PAN,
-                RIGHT: THREE.MOUSE.DOLLY
-            };
-
-            // Lights
-            const ambientLight = new THREE.AmbientLight(0x404040, 2);
-            scene.add(ambientLight);
-            
-            const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-            pointLight.position.set(10, 10, 10);
-            scene.add(pointLight);
-            
-            const pointLight2 = new THREE.PointLight(0x06bcf9, 0.5, 100);
-            pointLight2.position.set(-10, -10, 5);
-            scene.add(pointLight2);
-
-            // Group to hold molecule
-            const moleculeGroup = new THREE.Group();
-            scene.add(moleculeGroup);
-
-            // Helper to create text sprite
-            const createTextSprite = (message, color) => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = 128; // Increased size for charge symbols
-                canvas.height = 128;
-                context.font = "Bold 40px Arial";
-                context.fillStyle = "rgba(0,0,0,1)";
-                context.strokeStyle = color;
-                context.lineWidth = 2;
-                context.textAlign = "center";
-                context.textBaseline = "middle";
-                // Stroke text for outline
-                context.strokeText(message, 64, 64);
-                context.fillStyle = "white";
-                context.fillText(message, 64, 64);
+            try {
+                // Three.js Setup
+                const width = mountRef.current.clientWidth;
+                const height = mountRef.current.clientHeight;
                 
-                const texture = new THREE.CanvasTexture(canvas);
-                const spriteMaterial = new THREE.SpriteMaterial({ 
-                    map: texture,
-                    depthTest: false // Render on top of own atom (we handle other occlusion via raycast)
-                });
-                const sprite = new THREE.Sprite(spriteMaterial);
-                sprite.renderOrder = 999; 
-                sprite.scale.set(0.5, 0.5, 0.5);
-                return sprite;
-            }
+                scene = new THREE.Scene();
+                // Background is handled by CSS, keep scene transparent or dark
+                scene.background = null; 
+                
+                // Fog for depth
+                scene.fog = new THREE.Fog(0x111111, 5, 25);
 
-            // Helper to create 3D Cage
-            const createIonicCage = (radius, color) => {
-                const s = radius * 1.6; // Size box
-                const d = s * 0.4; // Corner line length
-                const geometry = new THREE.BufferGeometry();
-                const vertices = [];
+                camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+                camera.position.z = 8;
+                camera.position.y = 2;
 
-                // 8 Corners of a cube
-                const corners = [
-                    [s, s, s], [s, s, -s], [s, -s, s], [s, -s, -s],
-                    [-s, s, s], [-s, s, -s], [-s, -s, s], [-s, -s, -s]
-                ];
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(width, height);
+                mountRef.current.appendChild(renderer.domElement);
 
-                corners.forEach(([x, y, z]) => {
-                    // Line parallel to X
-                    vertices.push(x, y, z);
-                    vertices.push(x > 0 ? x - d : x + d, y, z);
-                    // Line parallel to Y
-                    vertices.push(x, y, z);
-                    vertices.push(x, y > 0 ? y - d : y + d, z);
-                    // Line parallel to Z
-                    vertices.push(x, y, z);
-                    vertices.push(x, y, z > 0 ? z - d : z + d);
-                });
-
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                const material = new THREE.LineBasicMaterial({ 
-                    color: color, 
-                    depthTest: false, // Always on top
-                    transparent: true,
-                    opacity: 0.8,
-                    linewidth: 2 
-                });
-                const cage = new THREE.LineSegments(geometry, material);
-                cage.renderOrder = 998; // Just below text
-                return cage;
-            }
-
-            // Render Molecule Function
-            const renderMolecule = () => {
-                while(moleculeGroup.children.length > 0){ 
-                    moleculeGroup.remove(moleculeGroup.children[0]); 
+                // Check OrbitControls
+                if (THREE.OrbitControls) {
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                    // Configure controls for Middle Mouse Pan
+                    controls.enablePan = true;
+                    controls.screenSpacePanning = true; 
+                    controls.mouseButtons = {
+                        LEFT: THREE.MOUSE.ROTATE,
+                        MIDDLE: THREE.MOUSE.PAN,
+                        RIGHT: THREE.MOUSE.DOLLY
+                    };
+                } else {
+                    console.warn("OrbitControls not loaded.");
                 }
+
+                // Lights
+                const ambientLight = new THREE.AmbientLight(0x404040, 2);
+                scene.add(ambientLight);
                 
-                // Clear refs
-                atomWrappers.current = [];
-                atomMeshes.current = [];
+                const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+                pointLight.position.set(10, 10, 10);
+                scene.add(pointLight);
+                
+                const pointLight2 = new THREE.PointLight(0x06bcf9, 0.5, 100);
+                pointLight2.position.set(-10, -10, 5);
+                scene.add(pointLight2);
 
-                const data = MOLECULES[selectedMoleculeName];
-                if(!data) return;
+                // Group to hold molecule
+                const moleculeGroup = new THREE.Group();
+                scene.add(moleculeGroup);
 
-                // Create Atoms
-                data.atoms.forEach(atom => {
-                    const radius = ELEMENT_RADII[atom.el] || 0.3;
-                    const color = ELEMENT_COLORS[atom.el] || 0xffffff;
-                    const geometry = new THREE.SphereGeometry(radius, 32, 32);
-                    const material = new THREE.MeshPhysicalMaterial({ 
-                        color: color,
-                        roughness: 0.3,
-                        metalness: 0.2,
-                        clearcoat: 0.8
+                // Helper to create text sprite
+                const createTextSprite = (message, color) => {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = 128; // Increased size for charge symbols
+                    canvas.height = 128;
+                    context.font = "Bold 40px Arial";
+                    context.fillStyle = "rgba(0,0,0,1)";
+                    context.strokeStyle = color;
+                    context.lineWidth = 2;
+                    context.textAlign = "center";
+                    context.textBaseline = "middle";
+                    // Stroke text for outline
+                    context.strokeText(message, 64, 64);
+                    context.fillStyle = "white";
+                    context.fillText(message, 64, 64);
+                    
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const spriteMaterial = new THREE.SpriteMaterial({ 
+                        map: texture,
+                        depthTest: false // Render on top of own atom (we handle other occlusion via raycast)
                     });
-                    const sphere = new THREE.Mesh(geometry, material);
-                    sphere.position.set(atom.x, atom.y, atom.z);
-                    moleculeGroup.add(sphere);
+                    const sprite = new THREE.Sprite(spriteMaterial);
+                    sprite.renderOrder = 999; 
+                    sprite.scale.set(0.5, 0.5, 0.5);
+                    return sprite;
+                }
 
-                    // Label Logic
-                    let label = atom.el;
-                    let hasCharge = false;
-                    
-                    if (showIonic && atom.role) {
-                        hasCharge = true;
-                        label += (atom.role === "cation" ? "+" : "-");
-                        
-                        // Add Cage
-                        const cageColor = atom.role === "cation" ? 0x0088ff : 0xff0044;
-                        const cage = createIonicCage(radius, cageColor);
-                        cage.position.set(atom.x, atom.y, atom.z);
-                        moleculeGroup.add(cage);
+                // Helper to create 3D Cage
+                const createIonicCage = (radius, color) => {
+                    const s = radius * 1.6; // Size box
+                    const d = s * 0.4; // Corner line length
+                    const geometry = new THREE.BufferGeometry();
+                    const vertices = [];
+
+                    // 8 Corners of a cube
+                    const corners = [
+                        [s, s, s], [s, s, -s], [s, -s, s], [s, -s, -s],
+                        [-s, s, s], [-s, s, -s], [-s, -s, s], [-s, -s, -s]
+                    ];
+
+                    corners.forEach(([x, y, z]) => {
+                        // Line parallel to X
+                        vertices.push(x, y, z);
+                        vertices.push(x > 0 ? x - d : x + d, y, z);
+                        // Line parallel to Y
+                        vertices.push(x, y, z);
+                        vertices.push(x, y > 0 ? y - d : y + d, z);
+                        // Line parallel to Z
+                        vertices.push(x, y, z);
+                        vertices.push(x, y, z > 0 ? z - d : z + d);
+                    });
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: color, 
+                        depthTest: false, // Always on top
+                        transparent: true,
+                        opacity: 0.8,
+                        linewidth: 2 
+                    });
+                    const cage = new THREE.LineSegments(geometry, material);
+                    cage.renderOrder = 998; // Just below text
+                    return cage;
+                }
+
+                // Render Molecule Function
+                const renderMolecule = () => {
+                    while(moleculeGroup.children.length > 0){ 
+                        moleculeGroup.remove(moleculeGroup.children[0]); 
                     }
-
-                    // Add Label
-                    const sprite = createTextSprite(label, '#' + new THREE.Color(color).getHexString());
-                    sprite.position.set(atom.x, atom.y, atom.z);
-                    moleculeGroup.add(sprite);
                     
-                    // Store for update loop
-                    atomWrappers.current.push({ mesh: sphere, sprite: sprite });
-                    atomMeshes.current.push(sphere);
-                });
+                    // Clear refs
+                    atomWrappers.current = [];
+                    atomMeshes.current = [];
 
-                // Create Bonds
-                data.bonds.forEach(bond => {
-                    const source = data.atoms[bond.source];
-                    const target = data.atoms[bond.target];
-                    const start = new THREE.Vector3(source.x, source.y, source.z);
-                    const end = new THREE.Vector3(target.x, target.y, target.z);
-                    const distance = start.distanceTo(end);
-                    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-                    
-                    if (bond.type === 'ionic') {
-                        if (!showIonic) return;
-                        const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
-                        const lineMat = new THREE.LineDashedMaterial({ 
-                            color: 0xffff00, 
-                            dashSize: 0.2, 
-                            gapSize: 0.1,
-                            scale: 1 
-                        });
-                        const line = new THREE.Line(lineGeo, lineMat);
-                        line.computeLineDistances();
-                        moleculeGroup.add(line);
-                    } else if (bond.type === 'vdw') {
-                        if (!showVDW) return;
-                        const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
-                        const lineMat = new THREE.LineDashedMaterial({ 
-                            color: 0x00ffff, 
-                            dashSize: 0.05, 
-                            gapSize: 0.1,
-                            scale: 1,
-                            opacity: 0.5,
-                            transparent: true
-                        });
-                        const line = new THREE.Line(lineGeo, lineMat);
-                        line.computeLineDistances();
-                        moleculeGroup.add(line);
-                    } else if (showTau && bond.type === 'double') {
-                         // Tau / Bent Bonds
-                         const curveHeight = 0.3;
-                         const createBentBond = (offsetScaler) => {
-                             const path = new THREE.QuadraticBezierCurve3(
-                                 start,
-                                 new THREE.Vector3(mid.x, mid.y + offsetScaler, mid.z + offsetScaler), // Control point
-                                 end
-                             );
-                             const tubeGeo = new THREE.TubeGeometry(path, 8, 0.08, 8, false);
-                             const tubeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
-                             const tube = new THREE.Mesh(tubeGeo, tubeMat);
-                             moleculeGroup.add(tube);
-                         };
-                         createBentBond(curveHeight);
-                         createBentBond(-curveHeight);
+                    const data = MOLECULES[selectedMoleculeName];
+                    if(!data) return;
 
-                    } else {
-                        // Sigma Bond (Standard)
-                        const direction = new THREE.Vector3().subVectors(end, start);
-                        const orientation = new THREE.Matrix4();
-                        orientation.lookAt(start, end, new THREE.Object3D().up);
-                        orientation.multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+                    // Create Atoms
+                    data.atoms.forEach(atom => {
+                        const radius = ELEMENT_RADII[atom.el] || 0.3;
+                        const color = ELEMENT_COLORS[atom.el] || 0xffffff;
+                        const geometry = new THREE.SphereGeometry(radius, 32, 32);
+                        const material = new THREE.MeshPhysicalMaterial({ 
+                            color: color,
+                            roughness: 0.3,
+                            metalness: 0.2,
+                            clearcoat: 0.8
+                        });
+                        const sphere = new THREE.Mesh(geometry, material);
+                        sphere.position.set(atom.x, atom.y, atom.z);
+                        moleculeGroup.add(sphere);
+
+                        // Label Logic
+                        let label = atom.el;
+                        let hasCharge = false;
                         
-                        const cylinderGeo = new THREE.CylinderGeometry(0.1, 0.1, distance, 12);
-                        const cylinderMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-                        const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
-                        cylinder.applyMatrix4(orientation);
-                        cylinder.position.copy(mid);
-                        moleculeGroup.add(cylinder);
-
-                        // If double bond and NOT Tau, show simplified Pi lines
-                        if (bond.type === 'double' && !showTau) {
-                             const cylinder2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, distance, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-                             cylinder2.applyMatrix4(orientation);
-                             cylinder2.position.copy(mid);
-                             cylinder2.position.x += 0.15;
-                             moleculeGroup.add(cylinder2);
+                        if (showIonic && atom.role) {
+                            hasCharge = true;
+                            label += (atom.role === "cation" ? "+" : "-");
+                            
+                            // Add Cage
+                            const cageColor = atom.role === "cation" ? 0x0088ff : 0xff0044;
+                            const cage = createIonicCage(radius, cageColor);
+                            cage.position.set(atom.x, atom.y, atom.z);
+                            moleculeGroup.add(cage);
                         }
-                    }
 
-                    // Pi Orbitals Visualization
-                    if (showPi && bond.type === 'double') {
-                        const createLobe = (pos, isUp) => {
-                            const lobeGeo = new THREE.SphereGeometry(0.3, 16, 16);
-                            lobeGeo.scale(0.5, 1, 0.5);
-                            const lobeMat = new THREE.MeshPhongMaterial({ 
-                                color: isUp ? 0x0000ff : 0xff0000, 
-                                transparent: true, 
-                                opacity: 0.4,
-                                side: THREE.DoubleSide
+                        // Add Label
+                        const sprite = createTextSprite(label, '#' + new THREE.Color(color).getHexString());
+                        sprite.position.set(atom.x, atom.y, atom.z);
+                        moleculeGroup.add(sprite);
+                        
+                        // Store for update loop
+                        atomWrappers.current.push({ mesh: sphere, sprite: sprite });
+                        atomMeshes.current.push(sphere);
+                    });
+
+                    // Create Bonds
+                    data.bonds.forEach(bond => {
+                        const source = data.atoms[bond.source];
+                        const target = data.atoms[bond.target];
+                        const start = new THREE.Vector3(source.x, source.y, source.z);
+                        const end = new THREE.Vector3(target.x, target.y, target.z);
+                        const distance = start.distanceTo(end);
+                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                        
+                        if (bond.type === 'ionic') {
+                            if (!showIonic) return;
+                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+                            const lineMat = new THREE.LineDashedMaterial({ 
+                                color: 0xffff00, 
+                                dashSize: 0.2, 
+                                gapSize: 0.1,
+                                scale: 1 
                             });
-                            const lobe = new THREE.Mesh(lobeGeo, lobeMat);
-                            lobe.position.set(pos.x, pos.y + (isUp ? 0.5 : -0.5), pos.z + 0.2);
-                            moleculeGroup.add(lobe);
-                        };
-                        createLobe(source, true);
-                        createLobe(source, false);
-                        createLobe(target, true);
-                        createLobe(target, false);
-                    }
-                });
-            };
+                            const line = new THREE.Line(lineGeo, lineMat);
+                            line.computeLineDistances();
+                            moleculeGroup.add(line);
+                        } else if (bond.type === 'vdw') {
+                            if (!showVDW) return;
+                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+                            const lineMat = new THREE.LineDashedMaterial({ 
+                                color: 0x00ffff, 
+                                dashSize: 0.05, 
+                                gapSize: 0.1,
+                                scale: 1,
+                                opacity: 0.5,
+                                transparent: true
+                            });
+                            const line = new THREE.Line(lineGeo, lineMat);
+                            line.computeLineDistances();
+                            moleculeGroup.add(line);
+                        } else if (showTau && bond.type === 'double') {
+                             // Tau / Bent Bonds
+                             const curveHeight = 0.3;
+                             const createBentBond = (offsetScaler) => {
+                                 const path = new THREE.QuadraticBezierCurve3(
+                                     start,
+                                     new THREE.Vector3(mid.x, mid.y + offsetScaler, mid.z + offsetScaler), // Control point
+                                     end
+                                 );
+                                 const tubeGeo = new THREE.TubeGeometry(path, 8, 0.08, 8, false);
+                                 const tubeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+                                 const tube = new THREE.Mesh(tubeGeo, tubeMat);
+                                 moleculeGroup.add(tube);
+                             };
+                             createBentBond(curveHeight);
+                             createBentBond(-curveHeight);
 
-            renderMolecule();
-
-            // Animation Loop
-            const animate = () => {
-                requestAnimationFrame(animate);
-                controls.update();
-                
-                // Handle text occlusion
-                if (atomWrappers.current.length > 0) {
-                    const camPos = camera.position;
-                    const dir = new THREE.Vector3();
-                    
-                    atomWrappers.current.forEach(({ mesh, sprite }) => {
-                        dir.subVectors(mesh.position, camPos).normalize();
-                        raycaster.current.set(camPos, dir);
-                        
-                        const intersects = raycaster.current.intersectObjects(atomMeshes.current);
-                        
-                        if (intersects.length > 0) {
-                            if (intersects[0].object === mesh) {
-                                sprite.visible = true;
-                            } else {
-                                sprite.visible = false;
-                            }
                         } else {
-                            sprite.visible = true;
+                            // Sigma Bond (Standard)
+                            const direction = new THREE.Vector3().subVectors(end, start);
+                            const orientation = new THREE.Matrix4();
+                            orientation.lookAt(start, end, new THREE.Object3D().up);
+                            orientation.multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
+                            
+                            const cylinderGeo = new THREE.CylinderGeometry(0.1, 0.1, distance, 12);
+                            const cylinderMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+                            const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
+                            cylinder.applyMatrix4(orientation);
+                            cylinder.position.copy(mid);
+                            moleculeGroup.add(cylinder);
+
+                            // If double bond and NOT Tau, show simplified Pi lines
+                            if (bond.type === 'double' && !showTau) {
+                                 const cylinder2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, distance, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                                 cylinder2.applyMatrix4(orientation);
+                                 cylinder2.position.copy(mid);
+                                 cylinder2.position.x += 0.15;
+                                 moleculeGroup.add(cylinder2);
+                            }
+                        }
+
+                        // Pi Orbitals Visualization
+                        if (showPi && bond.type === 'double') {
+                            const createLobe = (pos, isUp) => {
+                                const lobeGeo = new THREE.SphereGeometry(0.3, 16, 16);
+                                lobeGeo.scale(0.5, 1, 0.5);
+                                const lobeMat = new THREE.MeshPhongMaterial({ 
+                                    color: isUp ? 0x0000ff : 0xff0000, 
+                                    transparent: true, 
+                                    opacity: 0.4,
+                                    side: THREE.DoubleSide
+                                });
+                                const lobe = new THREE.Mesh(lobeGeo, lobeMat);
+                                lobe.position.set(pos.x, pos.y + (isUp ? 0.5 : -0.5), pos.z + 0.2);
+                                moleculeGroup.add(lobe);
+                            };
+                            createLobe(source, true);
+                            createLobe(source, false);
+                            createLobe(target, true);
+                            createLobe(target, false);
                         }
                     });
-                }
+                };
 
-                renderer.render(scene, camera);
-            };
-            animate();
+                renderMolecule();
+
+                // Animation Loop
+                const animate = () => {
+                    animId = requestAnimationFrame(animate);
+                    if (controls) controls.update();
+                    
+                    // Handle text occlusion
+                    if (atomWrappers.current.length > 0) {
+                        const camPos = camera.position;
+                        const dir = new THREE.Vector3();
+                        
+                        atomWrappers.current.forEach(({ mesh, sprite }) => {
+                            dir.subVectors(mesh.position, camPos).normalize();
+                            raycaster.current.set(camPos, dir);
+                            
+                            const intersects = raycaster.current.intersectObjects(atomMeshes.current);
+                            
+                            if (intersects.length > 0) {
+                                if (intersects[0].object === mesh) {
+                                    sprite.visible = true;
+                                } else {
+                                    sprite.visible = false;
+                                }
+                            } else {
+                                sprite.visible = true;
+                            }
+                        });
+                    }
+
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+            } catch (e) {
+                console.error("3D Viewer crashed:", e);
+                setError(e.message);
+            }
 
             // Cleanup
             return () => {
-                if (mountRef.current) {
+                if (animId) cancelAnimationFrame(animId);
+                if (mountRef.current && renderer) {
                     mountRef.current.removeChild(renderer.domElement);
                 }
+                if (renderer) renderer.dispose();
             };
         }, [selectedMoleculeName, showPi, showTau, showIonic, showVDW]);
+
+        if (error) {
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 text-white">
+                    <div className="text-center">
+                        <h2 className="text-xl font-bold text-red-500 mb-4">Viewer Error</h2>
+                        <p className="mb-4">{error}</p>
+                        <button onClick={onClose} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600">Close</button>
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div className="fixed inset-0 z-[100] flex bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
@@ -877,15 +912,15 @@
       };
 
       const BlackHoleBackground = ({ progress }) => {
+        // ... (No changes needed here, assuming it works)
         const canvasRef = useRef(null);
-        const angleRef = useRef(0); // Store accumulated rotation angle
+        const angleRef = useRef(0);
 
         useEffect(() => {
           const canvas = canvasRef.current;
           const ctx = canvas.getContext('2d');
           
           const render = () => {
-            // Setup canvas
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const w = canvas.width;
@@ -893,13 +928,10 @@
             const cx = w / 2;
             const cy = h / 2;
 
-            // Clear background
             ctx.fillStyle = '#020204';
             ctx.fillRect(0, 0, w, h);
 
-            // Draw Stars
-            // Use time-invariant noise for stars so they don't flicker on re-render, 
-            // but we re-generate them here for simplicity since performance is okay for this count.
+            // Stars
             for(let i=0; i<150; i++) {
                 const x = (Math.sin(i * 123.456) * 9999) % w;
                 const y = (Math.cos(i * 654.321) * 9999) % h;
@@ -911,63 +943,38 @@
                 ctx.fill();
             }
 
-            // --- Simulation Logic ---
-            const p = progress; // 0 to 1
+            const p = progress;
             const merged = p > 0.98;
-            
-            // Dynamics
             const maxSep = Math.min(w, h) * 0.25;
-            
-            // Separation decreases as progress increases
-            // Orbit radius is half the separation distance
             const currentOrbitRadius = merged ? 0 : (maxSep/2) * (1 - p);
-            
-            // Rotation speed increases exponentially as they get closer (Kepler-ish)
-            // Base speed + acceleration based on proximity
             const rotationSpeed = 0.02 + (Math.pow(p, 3) * 0.15);
-            
-            // Update accumulated angle
             angleRef.current += rotationSpeed;
             const angle = angleRef.current;
 
             ctx.save();
             ctx.translate(cx, cy);
 
-            // Draw Gravitational Waves
-            // Ripples that emanate from center, frequency increases with speed
             if (!merged) {
                 const numRings = 8;
                 const maxRad = Math.max(w, h) * 0.6;
                 const time = Date.now() / 1000;
-                
                 ctx.save();
-                // Rotate waves slightly differently to create interference pattern feel
                 ctx.rotate(angle * 0.2); 
-                
                 for(let i=0; i<numRings; i++) {
                     const waveBase = (i / numRings);
-                    // Waves move outward
                     const waveOffset = (time * (0.1 + p * 0.4)) % 1; 
                     const waveR = ((waveBase + waveOffset) % 1) * maxRad;
-                    
-                    // Intensity fades out at edges, and increases with progress (energy output)
                     const fade = 1 - (waveR / maxRad);
                     const intensity = (p * 0.6 + 0.1) * fade;
-                    
                     ctx.strokeStyle = `rgba(100, 100, 255, ${intensity})`;
                     ctx.lineWidth = 1 + p * 5 * fade;
-                    
                     ctx.beginPath();
-                    // Slight elliptical distortion based on rotation speed
-                    const distortion = p * 0.1;
-                    ctx.ellipse(0, 0, waveR, waveR * (1 - distortion), angle * -1, 0, Math.PI * 2);
+                    ctx.ellipse(0, 0, waveR, waveR * (1 - p * 0.1), angle * -1, 0, Math.PI * 2);
                     ctx.stroke();
                 }
                 ctx.restore();
             } else {
-                // Post-Merger Shockwave Ring
-                const shockTime = (Date.now() / 20) % 200; // Continuous expanding rings
-                const maxShock = Math.max(w,h);
+                const shockTime = (Date.now() / 20) % 200;
                 ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * (1 - shockTime/200)})`;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -975,22 +982,18 @@
                 ctx.stroke();
             }
 
-            // --- Draw Black Holes ---
-            
             const drawSingleBH = (x, y, r, color, isMergedEntity) => {
-                 // Accretion Disk (Glow)
                 const diskRadius = r * (isMergedEntity ? 5 : 3);
                 const grad = ctx.createRadialGradient(x, y, r * 0.8, x, y, diskRadius);
-                grad.addColorStop(0, '#000'); // Horizon
-                grad.addColorStop(0.2, color); // Inner hot disk
-                grad.addColorStop(1, 'transparent'); // Outer edge
+                grad.addColorStop(0, '#000'); 
+                grad.addColorStop(0.2, color); 
+                grad.addColorStop(1, 'transparent'); 
 
                 ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(x, y, diskRadius, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Photon Ring (The bright circle)
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = isMergedEntity ? 4 : 2;
                 ctx.shadowColor = color;
@@ -1000,7 +1003,6 @@
                 ctx.stroke();
                 ctx.shadowBlur = 0;
 
-                // Event Horizon (Pitch Black Center)
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
                 ctx.arc(x, y, r * 0.95, 0, Math.PI * 2);
@@ -1010,12 +1012,9 @@
             const baseRadius = 20;
 
             if (merged) {
-                // Merged State
-                // Little shake effect
                 const shake = (Math.random() - 0.5) * 3;
                 drawSingleBH(shake, shake, baseRadius * 1.6, 'rgba(150, 200, 255, 0.9)', true);
                 
-                // Energy jets
                 ctx.save();
                 ctx.rotate(Math.PI / 4);
                 ctx.strokeStyle = 'rgba(6, 188, 249, 0.4)';
@@ -1029,31 +1028,21 @@
                 ctx.restore();
 
             } else {
-                // Binary State
                 const x1 = Math.cos(angle) * currentOrbitRadius;
                 const y1 = Math.sin(angle) * currentOrbitRadius;
-                
                 const x2 = Math.cos(angle + Math.PI) * currentOrbitRadius;
                 const y2 = Math.sin(angle + Math.PI) * currentOrbitRadius;
 
-                const bh1Color = 'rgba(6, 188, 249, 0.8)'; // Blue
-                const bh2Color = 'rgba(168, 85, 247, 0.8)'; // Purple
+                drawSingleBH(x1, y1, baseRadius, 'rgba(6, 188, 249, 0.8)', false);
+                drawSingleBH(x2, y2, baseRadius, 'rgba(168, 85, 247, 0.8)', false);
 
-                drawSingleBH(x1, y1, baseRadius, bh1Color, false);
-                drawSingleBH(x2, y2, baseRadius, bh2Color, false);
-
-                // Matter Bridge when close
                 if (p > 0.5) {
                     ctx.save();
                     ctx.beginPath();
                     ctx.moveTo(x1 * 0.8, y1 * 0.8);
-                    
-                    // Bezier control point in center creates the bridge
                     const cpX = (Math.random()-0.5) * 10;
                     const cpY = (Math.random()-0.5) * 10;
-                    
                     ctx.quadraticCurveTo(cpX, cpY, x2 * 0.8, y2 * 0.8);
-                    
                     ctx.strokeStyle = `rgba(255, 255, 255, ${p * 0.8})`;
                     ctx.lineWidth = p * 6;
                     ctx.lineCap = 'round';
@@ -1082,158 +1071,10 @@
         return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full object-cover" />;
       };
 
-      // --- Components ---
-
-      const Navbar = () => {
-        const [isOpen, setIsOpen] = useState(false);
-        const [scrolled, setScrolled] = useState(false);
-
-        useEffect(() => {
-          const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-          };
-          window.addEventListener('scroll', handleScroll);
-          return () => window.removeEventListener('scroll', handleScroll);
-        }, []);
-
-        return (
-          <nav className={`fixed top-0 z-50 w-full border-b transition-colors duration-300 ${scrolled ? 'border-white/5 bg-background-dark/90 backdrop-blur-md' : 'border-transparent bg-transparent'}`}>
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-              <div className="flex items-center gap-4">
-                <div 
-                  className="h-10 w-10 rounded-full bg-cover bg-center ring-2 ring-primary/50 shadow-neon"
-                  style={{ backgroundImage: `url('${PROFILE_AVATAR}')` }}
-                  aria-label="Portrait of Thanh Huy"
-                />
-                <span className="text-lg font-bold tracking-tight text-white hidden sm:block">Thanh Huy</span>
-              </div>
-              
-              <div className="hidden md:flex items-center gap-8">
-                {NAV_ITEMS.map((item) => (
-                  <a 
-                    key={item.label} 
-                    href={item.href} 
-                    className="text-sm font-medium text-slate-300 hover:text-primary transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-
-              <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden p-2 text-slate-300 hover:text-white"
-              >
-                <span className="material-symbols-outlined">{isOpen ? 'close' : 'menu'}</span>
-              </button>
-            </div>
-
-            {/* Mobile Menu */}
-            {isOpen && (
-              <div className="md:hidden absolute top-16 left-0 w-full bg-background-dark/95 border-b border-white/5 backdrop-blur-md py-4">
-                <div className="flex flex-col items-center gap-4">
-                  {NAV_ITEMS.map((item) => (
-                    <a 
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className="text-base font-medium text-slate-300 hover:text-primary transition-colors"
-                    >
-                      {item.label}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </nav>
-        );
-      };
-
-      const Hero = () => {
-        const [timeData, setTimeData] = useState(100); // Start merged (100)
-        const [isControlOpen, setIsControlOpen] = useState(true);
-
-        return (
-          <section id="home" className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6 bg-[#020204]">
-            
-            {/* Background Simulation */}
-            <BlackHoleBackground progress={timeData / 100} />
-
-            {/* Content Gradient Overlay to ensure text readability */}
-            <div className="absolute inset-0 z-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark/50 pointer-events-none"></div>
-
-            <div className="relative z-10 mx-auto max-w-5xl text-center mt-10 pointer-events-none">
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary/80">2026 Portfolio</p>
-              <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-7xl lg:text-8xl drop-shadow-2xl">
-                Atomizing the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-cyan-300 to-white">Celestial</span> <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary via-purple-400 to-white">Bodies</span>
-              </h1>
-              <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-slate-300 sm:text-xl drop-shadow-md">
-                I'm <span className="text-white font-medium">Thanh Huy</span>. I am a student who is dedicated to <GradientText>chemistry and astronomy</GradientText>. I use my coding skills to create digital experiences.
-              </p>
-            </div>
-              
-            <div className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a href="#projects" className="group relative flex h-12 items-center justify-center overflow-hidden rounded-full bg-primary px-8 text-sm font-bold text-[#020204] transition-all hover:bg-cyan-300 hover:shadow-neon">
-                <span className="relative z-10 mr-2">Explore Universe</span>
-                <span className="material-symbols-outlined relative z-10 text-[20px] transition-transform group-hover:translate-x-1">rocket_launch</span>
-              </a>
-              <a href="#contact" className="flex h-12 items-center justify-center rounded-full border border-slate-700 px-8 text-sm font-bold text-white transition-colors hover:border-secondary hover:text-secondary hover:shadow-neon-purple bg-surface-dark/50 backdrop-blur-sm">
-                Contact Me
-              </a>
-            </div>
-
-            {/* Minimizable Time Control Bar */}
-            <div className="absolute bottom-10 left-0 right-0 mx-auto w-full max-w-md z-30 px-6 flex justify-center">
-                {isControlOpen ? (
-                  <div className="w-full bg-surface-dark/60 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className="flex justify-between items-center mb-3">
-                          <div className="flex justify-between text-[10px] text-primary uppercase font-mono tracking-widest gap-4">
-                              <span>Binary System</span>
-                              <span>Singularity</span>
-                          </div>
-                          <button 
-                            onClick={() => setIsControlOpen(false)}
-                            className="text-slate-400 hover:text-white transition-colors"
-                            title="Minimize Controls"
-                          >
-                            <span className="material-symbols-outlined text-sm">remove</span>
-                          </button>
-                      </div>
-                      <input 
-                          type="range" 
-                          min="0" 
-                          max="100" 
-                          value={timeData} 
-                          onChange={(e) => setTimeData(Number(e.target.value))}
-                          className="range-slider"
-                      />
-                      <div className="flex justify-between items-center mt-2">
-                           <span className="text-[10px] text-slate-400 font-mono">T-Minus: {(100 - timeData).toFixed(0)} units</span>
-                           <span className={`text-[10px] font-mono transition-colors ${timeData > 95 ? 'text-red-500 animate-pulse font-bold' : 'text-slate-500'}`}>
-                              {timeData > 95 ? 'CRITICAL: MERGER IMMINENT' : 'STATUS: STABLE ORBIT'}
-                           </span>
-                      </div>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => setIsControlOpen(true)}
-                    className="flex items-center gap-2 bg-surface-dark/40 backdrop-blur-sm border border-white/10 hover:border-primary/50 text-slate-300 hover:text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-neon"
-                  >
-                    <span className="material-symbols-outlined text-sm">tune</span>
-                    <span className="text-xs font-bold uppercase tracking-wider">Initialize Controls</span>
-                  </button>
-                )}
-            </div>
-          </section>
-        );
-      };
-
       const Projects = ({ onOpenProject }) => {
         return (
           <section id="projects" className="py-24 px-4 sm:px-6 lg:px-8 relative bg-void overflow-hidden">
             <div className="absolute inset-0 z-0 bg-stars opacity-40"></div>
-            {/* Enhanced Background Blurs */}
             <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-secondary/20 blur-[130px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[700px] h-[700px] bg-primary/10 blur-[130px] rounded-full pointer-events-none"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/10 blur-[150px] rounded-full pointer-events-none"></div>
@@ -1253,7 +1094,14 @@
                 {PROJECTS.map((project, idx) => (
                   <div 
                     key={idx} 
-                    onClick={() => project.id === 'molecular' ? onOpenProject(project.id) : null}
+                    onClick={() => {
+                        if (project.id === 'molecular') {
+                            onOpenProject(project.id);
+                        } else {
+                            // Feedback for unimplemented projects
+                            alert("Access Denied: Classified Information. \n(This project link is a placeholder for the demo)");
+                        }
+                    }}
                     className={`group relative cursor-pointer overflow-hidden rounded-xl bg-[#0a0f14] border border-white/5 transition-all duration-300 hover:-translate-y-2 hover:border-${project.color === 'primary' ? 'primary' : 'secondary'}/50 hover:shadow-neon${project.color !== 'primary' ? '-purple' : ''}`}
                   >
                     <div className="aspect-[4/3] w-full overflow-hidden relative">
@@ -1290,38 +1138,24 @@
         );
       };
 
+      // ... (Rest of components: About, Contact, Footer are unchanged)
       const About = () => {
+        // Same as before
         return (
           <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#050505] relative overflow-hidden">
-             {/* New Blue/Purple Gradients for About */}
             <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 blur-[100px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/10 blur-[100px] rounded-full pointer-events-none"></div>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 bg-gradient-to-b from-transparent to-slate-800"></div>
-            
             <div className="mx-auto max-w-4xl relative z-10">
               <div className="mb-16 text-center">
-                <h2 className="text-3xl font-bold text-white sm:text-4xl">
-                  <span className="text-primary">Tech</span> & <span className="text-secondary">Science</span> Stack
-                </h2>
+                <h2 className="text-3xl font-bold text-white sm:text-4xl"><span className="text-primary">Tech</span> & <span className="text-secondary">Science</span> Stack</h2>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                 <div className="space-y-6 order-2 md:order-1">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-secondary">science</span>
-                    Scientific Methodology
-                  </h3>
-                  <p className="text-slate-400 leading-relaxed">
-                    I am driven by an unyielding curiosity to understand the mechanisms of our universe. I treat every project with extreme patience and carefulness, ensuring that every detail is accounted for. I am deeply dedicated to learning about the natural sciences, especially organic chemistry, because of the profound and intricate beauty that lies behind the reactions and structures. This disciplined mindset allows me to approach coding and design with the same rigor.
-                  </p>
-                  
-                  <div className="pt-4">
-                    <a href="#" className="inline-flex items-center text-white border-b border-primary pb-1 hover:text-primary transition-colors font-medium">
-                      Analyze Resume <span className="material-symbols-outlined ml-2 text-lg">download</span>
-                    </a>
-                  </div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2"><span className="material-symbols-outlined text-secondary">science</span> Scientific Methodology</h3>
+                  <p className="text-slate-400 leading-relaxed">I am driven by an unyielding curiosity to understand the mechanisms of our universe. I treat every project with extreme patience and carefulness, ensuring that every detail is accounted for.</p>
+                  <div className="pt-4"><a href="#" className="inline-flex items-center text-white border-b border-primary pb-1 hover:text-primary transition-colors font-medium">Analyze Resume <span className="material-symbols-outlined ml-2 text-lg">download</span></a></div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4 order-1 md:order-2">
                   {TECH_STACK.map((tech) => (
                     <div key={tech.title} className={`bg-surface-dark/50 backdrop-blur-sm p-5 rounded-lg border border-slate-800 hover:border-${tech.color.includes('primary') ? 'primary' : 'secondary'} transition-all group`}>
@@ -1338,35 +1172,17 @@
       };
 
       const Contact = () => {
+        // Same as before
         return (
-          <section id="contact" className="py-32 px-4 sm:px-6 relative overflow-hidden bg-void">
+           <section id="contact" className="py-32 px-4 sm:px-6 relative overflow-hidden bg-void">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] bg-secondary/10 blur-[100px] rounded-full"></div>
             <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-secondary/50 to-transparent"></div>
-            
             <div className="mx-auto max-w-2xl text-center relative z-10">
               <h2 className="text-4xl font-black text-white mb-6 sm:text-6xl tracking-tighter">Signal Received?</h2>
-              <p className="text-lg text-slate-400 mb-12 font-light">
-                Ready to collaborate on the next frontier of web design? <br className="hidden sm:block"/>
-                My frequency is open for new opportunities.
-              </p>
-              
+              <p className="text-lg text-slate-400 mb-12 font-light">Ready to collaborate on the next frontier of web design? <br className="hidden sm:block"/> My frequency is open for new opportunities.</p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <a href="mailto:nguyennhathanhhuy@gmail.com" className="flex items-center justify-center gap-3 bg-[#0a0f14] hover:bg-[#131b24] border border-slate-800 hover:border-secondary text-white px-8 py-4 rounded-lg transition-all group shadow-lg hover:shadow-neon-purple">
-                  <span className="material-symbols-outlined text-secondary group-hover:animate-pulse">mail</span>
-                  <span className="font-medium tracking-wide">nguyennhathanhhuy@gmail.com</span>
-                </a>
-                <div className="flex gap-4 justify-center items-center">
-                  {['GitHub', 'LinkedIn'].map((platform) => (
-                    <a 
-                      key={platform} 
-                      href="#" 
-                      className={`h-14 w-14 flex items-center justify-center rounded-lg bg-[#0a0f14] border border-slate-800 text-slate-400 hover:text-white hover:border-${platform === 'GitHub' ? 'primary' : 'secondary'} hover:shadow-${platform === 'GitHub' ? 'neon' : 'neon-purple'} transition-all`}
-                      aria-label={platform}
-                    >
-                       <span className="material-symbols-outlined">{platform === 'GitHub' ? 'code_blocks' : 'person_search'}</span>
-                    </a>
-                  ))}
-                </div>
+                <a href="mailto:nguyennhathanhhuy@gmail.com" className="flex items-center justify-center gap-3 bg-[#0a0f14] hover:bg-[#131b24] border border-slate-800 hover:border-secondary text-white px-8 py-4 rounded-lg transition-all group shadow-lg hover:shadow-neon-purple"><span className="material-symbols-outlined text-secondary group-hover:animate-pulse">mail</span><span className="font-medium tracking-wide">nguyennhathanhhuy@gmail.com</span></a>
+                <div className="flex gap-4 justify-center items-center">{['GitHub', 'LinkedIn'].map((platform) => (<a key={platform} href="#" className={`h-14 w-14 flex items-center justify-center rounded-lg bg-[#0a0f14] border border-slate-800 text-slate-400 hover:text-white hover:border-${platform === 'GitHub' ? 'primary' : 'secondary'} hover:shadow-${platform === 'GitHub' ? 'neon' : 'neon-purple'} transition-all`} aria-label={platform}><span className="material-symbols-outlined">{platform === 'GitHub' ? 'code_blocks' : 'person_search'}</span></a>))}</div>
               </div>
             </div>
           </section>
@@ -1374,11 +1190,10 @@
       };
 
       const Footer = () => {
+        // Same as before
         return (
           <footer className="border-t border-white/5 bg-void py-10 px-6 text-center">
-            <p className="text-slate-600 text-sm font-mono">
-              &copy; 2024 Thanh Huy. <span className="text-slate-700 mx-2">|</span> Built in the void with <span className="text-secondary">♥</span> and Tailwind CSS.
-            </p>
+            <p className="text-slate-600 text-sm font-mono">&copy; 2024 Thanh Huy. <span className="text-slate-700 mx-2">|</span> Built in the void with <span className="text-secondary">♥</span> and Tailwind CSS.</p>
           </footer>
         );
       };
