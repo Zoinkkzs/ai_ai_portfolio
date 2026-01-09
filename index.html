@@ -14,7 +14,7 @@
     <!-- React Dependencies (UMD) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Three.js Dependencies (Using consistent unpkg versioning) -->
     <script crossorigin src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -88,6 +88,19 @@
             background: #06bcf9;
             border-radius: 3px;
         }
+        
+        /* Sun Temp Slider Gradient - Realistic Stellar Evolution */
+        .temp-slider {
+            background: linear-gradient(to right, 
+                #4a0000 0%,    /* Dark Red 2000K */
+                #ff3300 20%,   /* Red 3000K */
+                #ff8800 40%,   /* Orange 4000K */
+                #ffdd00 50%,   /* Yellow 5800K */
+                #ffffff 70%,   /* White 8000K */
+                #aaccff 85%,   /* White-Blue 12000K */
+                #0044ff 100%   /* Blue 30000K+ */
+            );
+        }
     </style>
   </head>
   <body class="bg-background-light dark:bg-background-dark text-[#101e23] dark:text-white antialiased selection:bg-secondary selection:text-white font-display">
@@ -131,12 +144,12 @@
           url: '#'
         },
         {
-          id: 'nebula',
-          title: 'Nebula Cartography',
+          id: 'eclipse',
+          title: 'Solar Eclipse Simulation',
           category: 'Astrophysics',
-          description: 'Mapping star density in local clusters using high-contrast monochromatic UI design.',
-          image: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=1000&auto=format&fit=crop',
-          tags: ['Data Viz', 'UI/UX'],
+          description: 'Real-time solar eclipse simulation with adjustable orbital mechanics, stellar temperature, and planetary alignment.',
+          image: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1000&auto=format&fit=crop',
+          tags: ['Astrophysics', 'Simulation'],
           color: 'secondary',
           url: '#'
         }
@@ -422,7 +435,521 @@
         </span>
       );
 
-      // --- 3D Molecular Viewer Component ---
+      // --- Eclipse Simulation Component ---
+      const EclipseSimulation = ({ onClose }) => {
+        const mountRef = useRef(null);
+        
+        // UI State
+        const [viewMode, setViewMode] = useState('space'); 
+        const [sunTemp, setSunTemp] = useState(50); // Slider 0-100
+        const [moonDist, setMoonDist] = useState(50);
+        const [simTime, setSimTime] = useState(0); 
+        const [isPlaying, setIsPlaying] = useState(true);
+        const [isControlsMinimized, setIsControlsMinimized] = useState(false);
+
+        // Computed State for UI Display
+        const [displayTemp, setDisplayTemp] = useState({ k: 5800, color: '#ffdd00' });
+        const [eclipseStatus, setEclipseStatus] = useState("NOT ECLIPSED");
+
+        // Simulation State Ref (for Animation Loop to avoid stale closures)
+        const simState = useRef({
+            viewMode: 'space',
+            sunTemp: 50,
+            moonDist: 50,
+            time: 0,
+            isPlaying: true,
+            prevAngle: 100 // Large init value
+        });
+
+        // Helper: Realistic Star Color from Slider
+        const getStarProperties = (val) => {
+            // val 0 to 100
+            let tempK, colorHex;
+            if (val < 10) { // Dark Red (2000-2500K)
+                tempK = 2000 + (val/10)*500; 
+                colorHex = 0x4a0000;
+            } else if (val < 25) { // Red (2500-3500K)
+                tempK = 2500 + ((val-10)/15)*1000; 
+                colorHex = 0xff3300;
+            } else if (val < 40) { // Orange (3500-5000K)
+                tempK = 3500 + ((val-25)/15)*1500; 
+                colorHex = 0xff8800;
+            } else if (val < 60) { // Yellow (5000-7000K) - Sun is here (~5800K)
+                tempK = 5000 + ((val-40)/20)*2000; 
+                colorHex = 0xffdd00;
+            } else if (val < 80) { // White (7000-10000K)
+                tempK = 7000 + ((val-60)/20)*3000; 
+                colorHex = 0xffffff;
+            } else if (val < 90) { // White Blue (10000-15000K)
+                tempK = 10000 + ((val-80)/10)*5000; 
+                colorHex = 0xaaccff;
+            } else { // Blue (15000-40000K)
+                tempK = 15000 + ((val-90)/10)*25000; 
+                colorHex = 0x0044ff;
+            }
+            return { temp: Math.round(tempK), color: new THREE.Color(colorHex) };
+        }
+
+        // Sync UI state to Simulation Ref
+        useEffect(() => {
+            simState.current.viewMode = viewMode;
+            simState.current.sunTemp = sunTemp;
+            simState.current.moonDist = moonDist;
+            simState.current.isPlaying = isPlaying;
+            
+            // Update UI Display for Temp
+            const props = getStarProperties(sunTemp);
+            setDisplayTemp({ k: props.temp, color: '#' + props.color.getHexString() });
+
+            // If dragging slider (paused), sync visual time to orbital time immediately
+            if (!isPlaying) {
+                 simState.current.time = simTime;
+            }
+        }, [viewMode, sunTemp, moonDist, isPlaying, simTime]);
+
+        useEffect(() => {
+            if (!mountRef.current || !window.THREE) return;
+
+            // Setup
+            const width = mountRef.current.clientWidth;
+            const height = mountRef.current.clientHeight;
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000); 
+            
+            const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true; 
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            mountRef.current.appendChild(renderer.domElement);
+
+            // Controls Safety Check
+            let controls;
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+            } else {
+                console.warn("OrbitControls not available");
+            }
+
+            // --- OBJECTS ---
+            const SUN_RADIUS = 5;
+            // Adjusted for Annular Eclipse effect (0.38 gives ideal angular size relative to Sun at default distance)
+            const MOON_RADIUS = 0.38; 
+            const EARTH_ORBIT_R = 40;
+            const EARTH_RADIUS = 1.5;
+
+            // Stars
+            const starGeo = new THREE.BufferGeometry();
+            const starPos = new Float32Array(3000 * 3);
+            for(let i=0; i<3000*3; i++) starPos[i] = (Math.random() - 0.5) * 800;
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.5}));
+            scene.add(stars);
+
+            // Sun
+            const sunGroup = new THREE.Group();
+            scene.add(sunGroup);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+            const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 64, 64), sunMat);
+            sunGroup.add(sunMesh);
+            const sunLight = new THREE.PointLight(0xffdd00, 2, 500);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048; // High quality shadows for eclipse
+            sunLight.shadow.mapSize.height = 2048;
+            sunGroup.add(sunLight);
+            
+            // Sun Glow
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.3, side: THREE.BackSide });
+            const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS * 1.4, 32, 32), glowMat);
+            sunGroup.add(glowMesh);
+
+            // Solar System Pivot (holds planets)
+            const solarSystem = new THREE.Group();
+            scene.add(solarSystem);
+
+            // Planets
+            const PLANET_DATA = [
+                { name: "Mercury", r: 0.5, dist: 10, speed: 4.1, color: 0xaaaaaa },
+                { name: "Venus", r: 1.2, dist: 20, speed: 1.6, color: 0xffcc00 },
+                { name: "Mars", r: 0.8, dist: 55, speed: 0.5, color: 0xff4400 },
+                { name: "Jupiter", r: 3.5, dist: 80, speed: 0.08, color: 0xd2b48c },
+                { name: "Saturn", r: 3.0, dist: 110, speed: 0.03, color: 0xf4d03f, ring: true },
+                { name: "Uranus", r: 2.0, dist: 140, speed: 0.01, color: 0x73c6b6 },
+                { name: "Neptune", r: 1.9, dist: 170, speed: 0.006, color: 0x5dade2 },
+                { name: "Pluto", r: 0.3, dist: 200, speed: 0.004, color: 0x999999 },
+            ];
+            
+            const planetMeshes = [];
+            PLANET_DATA.forEach(p => {
+                const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 32, 32), new THREE.MeshLambertMaterial({ color: p.color }));
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                const pivot = new THREE.Group();
+                pivot.add(mesh);
+                mesh.position.x = p.dist;
+                solarSystem.add(pivot);
+                planetMeshes.push({ pivot, speed: p.speed });
+                if(p.ring) {
+                    const ring = new THREE.Mesh(new THREE.RingGeometry(p.r * 1.4, p.r * 2.2, 32), new THREE.MeshBasicMaterial({ color: 0xaaaaaa, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
+                    ring.rotation.x = Math.PI / 2;
+                    mesh.add(ring);
+                }
+            });
+
+            // Earth System
+            // EarthOrbitPivot rotates around Sun (0,0,0)
+            const earthOrbitPivot = new THREE.Group();
+            solarSystem.add(earthOrbitPivot);
+
+            // Earth Group translated to orbit radius
+            const earthGroup = new THREE.Group();
+            earthGroup.position.x = EARTH_ORBIT_R;
+            earthOrbitPivot.add(earthGroup);
+
+            // Earth Mesh (Spins)
+            const earthMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(EARTH_RADIUS, 64, 64), 
+                new THREE.MeshPhongMaterial({ color: 0x2233ff, specular: 0x111111, shininess: 10 })
+            );
+            earthMesh.castShadow = true;
+            earthMesh.receiveShadow = true;
+            earthGroup.add(earthMesh);
+
+            // Moon System (Independent of Earth Spin, attached to EarthGroup)
+            const moonPivot = new THREE.Group();
+            earthGroup.add(moonPivot);
+            
+            const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 32, 32), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+            moonMesh.castShadow = true;
+            moonMesh.receiveShadow = true;
+            moonPivot.add(moonMesh);
+
+            // Animation
+            let animId;
+            let frameCount = 0; // Throttle counter
+
+            const animate = () => {
+                animId = requestAnimationFrame(animate);
+                
+                // Safety check
+                if (!mountRef.current) return;
+
+                const { viewMode, sunTemp, moonDist, isPlaying, prevAngle } = simState.current;
+                
+                // Advance Time
+                if (isPlaying) {
+                    simState.current.time += 0.005;
+                    
+                    // Throttle React State Updates
+                    frameCount++;
+                    if (frameCount % 10 === 0) {
+                        setSimTime(simState.current.time);
+                    }
+                }
+                const time = simState.current.time;
+
+                // 1. Update Sun Color/Temp
+                const starProps = getStarProperties(sunTemp);
+                sunMat.color.copy(starProps.color);
+                glowMat.color.copy(starProps.color);
+                sunLight.color.copy(starProps.color);
+                
+                // Base intensity calculation
+                let targetIntensity = 0.5 + (sunTemp / 100) * 1.5;
+
+                // 2. Orbital Updates
+                // Planets
+                planetMeshes.forEach(p => { p.pivot.rotation.y = time * 0.1 * p.speed; });
+                
+                // Earth Orbit around Sun
+                earthOrbitPivot.rotation.y = time * 0.05; 
+                
+                // Earth Spin (Day/Night cycle)
+                earthMesh.rotation.y = time * 0.5;
+
+                // Moon Orbit around Earth
+                // Mapping slider to range [3.5, 6.0] to facilitate Annular eclipses
+                const currentMoonDist = 3.5 + (moonDist / 100) * 2.5; 
+                moonMesh.position.x = currentMoonDist;
+                // Moon orbits faster than Earth around Sun
+                moonPivot.rotation.y = time * 0.8; 
+
+                // 3. View Mode Logic
+                if (viewMode === 'earth') {
+                    // Hide Planets & Earth Mesh
+                    planetMeshes.forEach(p => p.pivot.visible = false);
+                    earthMesh.visible = false;
+                    // Faint stars in atmosphere
+                    stars.material.opacity = 0.2;
+                    stars.material.transparent = true;
+
+                    // Camera Position: On Earth Surface, Looking at Sun
+                    const earthPos = new THREE.Vector3();
+                    earthMesh.getWorldPosition(earthPos);
+                    const sunPos = new THREE.Vector3(0,0,0);
+                    const moonPos = new THREE.Vector3();
+                    moonMesh.getWorldPosition(moonPos);
+
+                    const toSun = new THREE.Vector3().subVectors(sunPos, earthPos);
+                    const distToSun = toSun.length();
+                    toSun.normalize();
+                    
+                    const toMoon = new THREE.Vector3().subVectors(moonPos, earthPos);
+                    const distToMoon = toMoon.length();
+                    toMoon.normalize();
+                    
+                    const camPos = earthPos.clone().add(toSun.multiplyScalar(EARTH_RADIUS + 0.1));
+                    camera.position.copy(camPos);
+                    camera.lookAt(0, 0, 0); 
+
+                    if (controls) controls.enabled = false;
+
+                    // --- Eclipse Calculation ---
+                    // Calculate angle between View-to-Sun and View-to-Moon
+                    const angle = toSun.angleTo(toMoon); // radians
+
+                    // Apparent Sizes (approx tan(theta) = r/d)
+                    const appRadSun = Math.atan(SUN_RADIUS / distToSun);
+                    const appRadMoon = Math.atan(MOON_RADIUS / distToMoon);
+                    const totalRad = appRadSun + appRadMoon;
+                    
+                    // Determine Status
+                    let status = "NOT ECLIPSED";
+                    let coverage = 0; // 0 to 1 (1 = max overlap possible)
+
+                    // Simple overlap logic
+                    if (angle < totalRad) {
+                        // Normalize coverage roughly: 0 at edge, 1 at center
+                        coverage = 1 - (angle / totalRad);
+                        
+                        if (angle < prevAngle) {
+                            status = "ECLIPSING";
+                        } else {
+                            status = "DEPARTING";
+                        }
+
+                        // Check Totality or Annularity
+                        // We use a small epsilon for visual alignment
+                        if (angle < Math.abs(appRadSun - appRadMoon) + 0.005) {
+                             // If Moon appears smaller than Sun, it's Annular
+                             if (appRadMoon < appRadSun) {
+                                 status = "FULLY ECLIPSED (ANNULAR)";
+                             } else {
+                                 status = "FULLY ECLIPSED (TOTAL)";
+                             }
+                             if (angle > prevAngle) {
+                                status += " [DEPARTING]";
+                             }
+                        }
+                    } else if (prevAngle < totalRad && angle >= totalRad) {
+                        status = "FULLY DEPARTED";
+                    }
+
+                    // Update Ref
+                    simState.current.prevAngle = angle;
+                    
+                    // Update DOM (Throttle)
+                    if (frameCount % 10 === 0) setEclipseStatus(status);
+
+                    // --- Dynamic Lighting / Sky Color ---
+                    // Base Sky Color derived from Sun Color + Atmosphere Blue
+                    const atmosphereBase = new THREE.Color(0x87CEEB);
+                    const sunBaseColor = starProps.color.clone();
+                    // Mix them: 70% atmosphere, 30% sun tint
+                    const dayColor = atmosphereBase.lerp(sunBaseColor, 0.3);
+                    
+                    const nightColor = new THREE.Color(0x050510); // Deep twilight
+
+                    // Dim factor: stronger dimming when coverage is high
+                    let dimFactor = 0;
+                    if (status !== "NOT ECLIPSED" && status !== "FULLY DEPARTED") {
+                        // Cubic dimming for dramatic finish
+                        dimFactor = Math.pow(coverage, 3); 
+                    }
+
+                    // Interpolate Sky
+                    scene.background = dayColor.lerp(nightColor, dimFactor);
+                    
+                    // Dim Environment Light
+                    // Keep slightly higher minimum so we can see the "Ring" if annular
+                    // The ring is emissive (BasicMaterial) so it ignores lights, but the 'corona' needs to be visible
+                    sunLight.intensity = targetIntensity * (1 - dimFactor * 0.98);
+
+                } else {
+                    // Space View
+                    planetMeshes.forEach(p => p.pivot.visible = true);
+                    earthMesh.visible = true;
+                    stars.material.opacity = 1;
+                    stars.visible = true;
+                    scene.background = new THREE.Color(0x000000); 
+                    
+                    sunLight.intensity = targetIntensity;
+
+                    if (controls) {
+                        controls.enabled = true;
+                        controls.update();
+                    }
+                }
+
+                renderer.render(scene, camera);
+            };
+
+            // Init Camera
+            camera.position.set(0, 40, 60);
+            if (controls) controls.target.set(0, 0, 0);
+
+            animate();
+
+            return () => {
+                cancelAnimationFrame(animId);
+                if (mountRef.current && renderer) {
+                    mountRef.current.removeChild(renderer.domElement);
+                    renderer.dispose();
+                }
+            };
+        }, []); // Run once
+
+        return (
+            <div className="fixed inset-0 z-[100] flex bg-black/95 animate-in fade-in duration-300">
+                <div ref={mountRef} className="absolute inset-0 z-0" />
+                
+                {/* Header / Back */}
+                <div className="absolute top-4 left-4 z-20">
+                    <button onClick={onClose} className="flex items-center gap-2 px-4 py-2 bg-black/60 text-white rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+                        <span className="material-symbols-outlined">arrow_back</span>
+                        Back to Portfolio
+                    </button>
+                </div>
+
+                {/* Main Controls Panel */}
+                <div className={`absolute bottom-6 right-6 z-20 transition-all duration-300 ${isControlsMinimized ? 'w-auto' : 'w-80'}`}>
+                    <div className="bg-[#0a1116]/90 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                        
+                        {/* Panel Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 cursor-pointer" onClick={() => setIsControlsMinimized(!isControlsMinimized)}>
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-secondary">solar_power</span>
+                                <span className="font-bold text-white text-sm">System Controls</span>
+                            </div>
+                            <span className="material-symbols-outlined text-slate-400 text-sm">
+                                {isControlsMinimized ? 'expand_less' : 'expand_more'}
+                            </span>
+                        </div>
+
+                        {!isControlsMinimized && (
+                            <div className="p-5 space-y-6">
+                                
+                                {/* View Mode */}
+                                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-lg">
+                                    <button 
+                                        onClick={() => setViewMode('space')}
+                                        className={`py-2 text-xs font-bold rounded-md transition-all ${viewMode === 'space' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        SPACE VIEW
+                                    </button>
+                                    <button 
+                                        onClick={() => setViewMode('earth')}
+                                        className={`py-2 text-xs font-bold rounded-md transition-all ${viewMode === 'earth' ? 'bg-secondary text-white' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        EARTH VIEW
+                                    </button>
+                                </div>
+
+                                {/* Sun Temperature */}
+                                <div>
+                                    <div className="flex justify-between text-xs mb-2">
+                                        <span className="text-slate-300">Stellar Surface Temp</span>
+                                        <span className="font-mono" style={{ color: displayTemp.color }}>
+                                            {displayTemp.k} K
+                                        </span>
+                                    </div>
+                                    <input 
+                                        type="range" min="0" max="100" 
+                                        value={sunTemp} 
+                                        onChange={(e) => setSunTemp(parseInt(e.target.value))}
+                                        className="w-full h-2 rounded-lg appearance-none cursor-pointer temp-slider"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono uppercase">
+                                        <span>Red Dwarf</span>
+                                        <span>Sun</span>
+                                        <span>Blue Giant</span>
+                                    </div>
+                                </div>
+
+                                {/* Moon Distance */}
+                                <div>
+                                    <div className="flex justify-between text-xs mb-2">
+                                        <span className="text-slate-300">Lunar Distance</span>
+                                        <span className="font-mono text-secondary">{(384400 * (1 + (moonDist-50)/100)).toFixed(0)} km</span>
+                                    </div>
+                                    <input 
+                                        type="range" min="0" max="100" 
+                                        value={moonDist} 
+                                        onChange={(e) => setMoonDist(parseInt(e.target.value))}
+                                        className="range-slider"
+                                    />
+                                </div>
+
+                                {/* Timeline Controls */}
+                                <div className="pt-4 border-t border-white/10">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <button 
+                                            onClick={() => setIsPlaying(!isPlaying)}
+                                            className={`w-8 h-8 flex items-center justify-center rounded-full ${isPlaying ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'} border border-current transition-all`}
+                                        >
+                                            <span className="material-symbols-outlined text-sm">{isPlaying ? 'pause' : 'play_arrow'}</span>
+                                        </button>
+                                        <span className="text-xs text-slate-400 font-mono tracking-wider">TIMELINE SCRUBBER</span>
+                                    </div>
+                                    <input 
+                                        type="range" min="0" max="100" step="0.1"
+                                        value={(simTime % 100)} // Wrap visual slider
+                                        onChange={(e) => {
+                                            setIsPlaying(false);
+                                            setSimTime(parseFloat(e.target.value));
+                                        }}
+                                        className="range-slider"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* View Indicator Overlay */}
+                <div className="absolute bottom-6 left-6 pointer-events-none">
+                     <div className="text-white/50 text-[10px] font-mono mb-1">CURRENT MODE</div>
+                     <div className="text-2xl font-black text-white uppercase tracking-tighter">
+                        {viewMode === 'space' ? 'Orbital Observation' : 'Surface Telemetry'}
+                     </div>
+                     {viewMode === 'earth' && (
+                         <div className="mt-2 p-4 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 inline-block">
+                             <div className="flex items-center gap-2 mb-2">
+                                <span className={`material-symbols-outlined text-sm ${eclipseStatus.includes("FULLY") ? 'text-secondary animate-pulse' : 'text-yellow-400'}`}>
+                                    {eclipseStatus.includes("NOT") ? 'sunny' : eclipseStatus.includes("FULLY") ? 'eclipse' : 'contrast'}
+                                </span>
+                                <span className={`text-sm font-bold ${eclipseStatus.includes("FULLY") ? 'text-secondary' : 'text-white'}`}>
+                                    {eclipseStatus}
+                                </span>
+                             </div>
+                             <div className="text-[10px] text-slate-300 max-w-[200px] leading-tight">
+                                {eclipseStatus.includes("NOT") 
+                                    ? "Clear sky. Moon is not currently obstructing solar rays."
+                                    : eclipseStatus.includes("ANNULAR")
+                                    ? "ANNULAR ECLIPSE. Ring of Fire visible. Solar corona exposed."
+                                    : eclipseStatus.includes("TOTAL")
+                                    ? "TOTAL ECLIPSE. Totality reached. Darkness imminent."
+                                    : "Partial eclipse in progress. Ambient light diminishing."}
+                             </div>
+                         </div>
+                     )}
+                </div>
+            </div>
+        );
+      };
+
+      // --- 3D Molecular Viewer Component (Kept for compatibility with other button) ---
       const MolecularViewer = ({ onClose }) => {
         const mountRef = useRef(null);
         const [selectedMoleculeName, setSelectedMoleculeName] = useState("Benzene");
@@ -1241,6 +1768,8 @@
                     onClick={() => {
                         if (project.id === 'molecular') {
                             onOpenProject(project.id);
+                        } else if (project.id === 'eclipse') {
+                            onOpenProject(project.id);
                         } else {
                             // Feedback for unimplemented projects
                             alert("Access Denied: Classified Information. \n(This project link is a placeholder for the demo)");
@@ -1255,6 +1784,7 @@
                           backgroundImage: `url('${project.image}')`,
                           filter: project.title.includes('Curiosity') ? 'contrast(1.2) hue-rotate(220deg) saturate(0.8)' : 
                                   project.title.includes('Molecular') ? 'grayscale(100%) brightness(0.8) contrast(1.2)' : 
+                                  project.title.includes('Eclipse') ? 'grayscale(100%) brightness(0.7) sepia(0.3)' : 
                                   'hue-rotate(45deg) contrast(1.1)' 
                         }}
                       >
@@ -1353,6 +1883,10 @@
             {/* Overlays */}
             {activeProject === 'molecular' && (
                 <MolecularViewer onClose={() => setActiveProject(null)} />
+            )}
+            
+            {activeProject === 'eclipse' && (
+                <EclipseSimulation onClose={() => setActiveProject(null)} />
             )}
           </main>
         );
