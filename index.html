@@ -16,7 +16,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Three.js Dependencies (Using consistent unpkg versioning) -->
+    <!-- Three.js Dependencies -->
     <script crossorigin src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script crossorigin src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
@@ -77,12 +77,6 @@
             background: #fff;
             box-shadow: 0 0 15px #fff, 0 0 30px #06bcf9;
         }
-        /* Gradient Slider Track for Temp */
-        .temp-slider::-webkit-slider-runnable-track {
-            background: linear-gradient(to right, #ef4444, #f97316, #eab308, #ffffff, #3b82f6);
-            height: 4px;
-            border-radius: 2px;
-        }
         
         .molecule-scroll::-webkit-scrollbar {
             width: 6px;
@@ -124,6 +118,14 @@
             outline: none;
             border-color: #06bcf9;
         }
+        /* Custom Checkbox */
+        .checkbox-wrapper input:checked + div {
+            background-color: #06bcf9;
+            border-color: #06bcf9;
+        }
+        .checkbox-wrapper input:checked + div svg {
+            display: block;
+        }
     </style>
   </head>
   <body class="bg-background-light dark:bg-background-dark text-[#101e23] dark:text-white antialiased selection:bg-secondary selection:text-white font-display">
@@ -164,16 +166,6 @@
           image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=1000&auto=format&fit=crop',
           tags: ['WebGL', 'D3.js'],
           color: 'primary',
-          url: '#'
-        },
-        {
-          id: 'eclipse',
-          title: 'Solar Eclipse Simulation',
-          category: 'Astrophysics',
-          description: 'Real-time solar eclipse simulation with adjustable orbital mechanics, stellar temperature, and planetary alignment.',
-          image: 'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1000&auto=format&fit=crop',
-          tags: ['Astrophysics', 'Simulation'],
-          color: 'secondary',
           url: '#'
         }
       ];
@@ -261,6 +253,11 @@
       const ELEMENT_COLORS = {
         "C": 0x333333, "H": 0xFFFFFF, "O": 0xFF0000, "N": 0x0000FF, 
         "Ag": 0xC0C0C0, "Na": 0x800080, "Xe": 0x00FFFF
+      };
+
+      const ELEMENT_NAMES = {
+        "C": "Carbon", "H": "Hydrogen", "O": "Oxygen", "N": "Nitrogen",
+        "Ag": "Silver", "Na": "Sodium", "Xe": "Xenon"
       };
 
       const ELEMENT_RADII = {
@@ -358,7 +355,11 @@
         const [isPlaying, setIsPlaying] = useState(false);
         const simState = useRef({ progress: 0, isPlaying: false, decayType: "Beta Minus" });
 
-        useEffect(() => { simState.current.isPlaying = isPlaying; simState.current.decayType = selectedIsotope.type; if(!isPlaying) simState.current.progress = animProgress; }, [isPlaying, animProgress, selectedIsotope]);
+        useEffect(() => { 
+            simState.current.isPlaying = isPlaying; 
+            simState.current.decayType = selectedIsotope.type; 
+            simState.current.progress = animProgress;
+        }, [isPlaying, animProgress, selectedIsotope]);
 
         const parseParticles = (input) => input.trim().split(/[\s,]+/).map(t => { const val = t.toLowerCase(); if (val === 'b-' || val === 'beta') return 'β⁻'; if (val === 'y' || val === 'gamma') return 'γ'; if (val === 'v' || val === 'nu') return 'ν'; if (val === 'v-' || val === 'nu-') return 'ν̄'; if (val === 'a' || val === 'alpha') return 'α'; if (val === 'e' || val === 'e-') return 'e⁻'; return ''; }).filter(t => t);
 
@@ -383,31 +384,117 @@
             if (!mountRef.current || !window.THREE) return;
             const width = mountRef.current.clientWidth; const height = mountRef.current.clientHeight;
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); camera.position.set(0, 5, 10);
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100); camera.position.set(0, 5, 12);
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(width, height); mountRef.current.appendChild(renderer.domElement);
             const controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.enablePan = true;
             const ambient = new THREE.AmbientLight(0x404040, 2); scene.add(ambient);
             const light = new THREE.DirectionalLight(0xffffff, 2); light.position.set(5, 5, 5); scene.add(light);
+            
             const nucleusGroup = new THREE.Group(); scene.add(nucleusGroup);
             const electronGroup = new THREE.Group(); scene.add(electronGroup);
-            const particleGroup = new THREE.Group(); scene.add(particleGroup);
-            let protonMeshes = []; let capturedElectronMesh = null; let targetProton = null;
+            const ejectionGroup = new THREE.Group(); scene.add(ejectionGroup);
+            
+            let capturedElectronMesh = null;
 
-            const generateNucleus = () => {
-                while(nucleusGroup.children.length > 0) nucleusGroup.remove(nucleusGroup.children[0]); protonMeshes = [];
-                const protonCount = selectedIsotope.atomic; const neutronCount = selectedIsotope.mass - selectedIsotope.atomic;
-                const total = selectedIsotope.mass; const scaleFactor = Math.min(1, 50 / total); 
-                const visualProtons = Math.ceil(protonCount * scaleFactor); const visualNeutrons = Math.ceil(neutronCount * scaleFactor);
-                const geometry = new THREE.SphereGeometry(0.4, 16, 16);
-                const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 }); const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 50 });
-                const clusterRadius = Math.pow(visualProtons + visualNeutrons, 1/3) * 0.25;
-                for(let i=0; i<visualProtons + visualNeutrons; i++) {
-                    const isProton = i < visualProtons; const mesh = new THREE.Mesh(geometry, isProton ? pMat : nMat);
-                    const r = Math.pow(Math.random(), 1/3) * clusterRadius; const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
-                    mesh.position.x = r * Math.sin(phi) * Math.cos(theta); mesh.position.y = r * Math.sin(phi) * Math.sin(theta); mesh.position.z = r * Math.cos(phi);
-                    mesh.userData = { type: isProton ? 'proton' : 'neutron' }; nucleusGroup.add(mesh); if (isProton) protonMeshes.push(mesh);
+            const generateNucleusAndEjecta = () => {
+                while(nucleusGroup.children.length > 0) nucleusGroup.remove(nucleusGroup.children[0]);
+                while(ejectionGroup.children.length > 0) ejectionGroup.remove(ejectionGroup.children[0]);
+                
+                // Use actual atomic counts for realism (1:1 mapping)
+                const visualProtons = selectedIsotope.atomic; 
+                const visualNeutrons = selectedIsotope.mass - selectedIsotope.atomic;
+                
+                // Tighter, smaller particles for dense packing
+                const particleRadius = 0.2;
+                const geometry = new THREE.SphereGeometry(particleRadius, 16, 16);
+                const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 }); 
+                const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 50 });
+                
+                // Calculate cluster radius for dense packing
+                // Volume ~ proportional to mass number
+                const totalParticles = visualProtons + visualNeutrons;
+                const clusterRadius = Math.pow(totalParticles, 1/3) * particleRadius * 1.5;
+
+                const particles = [];
+                for(let i=0; i<visualProtons; i++) particles.push({ type: 'proton', mat: pMat });
+                for(let i=0; i<visualNeutrons; i++) particles.push({ type: 'neutron', mat: nMat });
+                particles.sort(() => Math.random() - 0.5);
+
+                let alphaCluster = [];
+                if (selectedIsotope.type === "Alpha") {
+                    let pFound = 0, nFound = 0;
+                    for(let i = particles.length - 1; i >= 0; i--) {
+                        if (particles[i].type === 'proton' && pFound < 2) {
+                            alphaCluster.push(particles.splice(i, 1)[0]);
+                            pFound++;
+                        } else if (particles[i].type === 'neutron' && nFound < 2) {
+                            alphaCluster.push(particles.splice(i, 1)[0]);
+                            nFound++;
+                        }
+                        if (pFound >= 2 && nFound >= 2) break;
+                    }
                 }
-                if (protonMeshes.length > 0) targetProton = protonMeshes[protonMeshes.length - 1];
+
+                particles.forEach(p => {
+                    const mesh = new THREE.Mesh(geometry, p.mat);
+                    const r = Math.pow(Math.random(), 1/3) * clusterRadius;
+                    const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
+                    mesh.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+                    nucleusGroup.add(mesh);
+                });
+
+                if (selectedIsotope.type === "Alpha") {
+                    const alphaObj = new THREE.Group();
+                    // Arrange alpha particles in a small tetrahedron
+                    const alphaPositions = [
+                        new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(particleRadius),
+                        new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(particleRadius),
+                        new THREE.Vector3(-1, 1, -1).normalize().multiplyScalar(particleRadius),
+                        new THREE.Vector3(-1, -1, 1).normalize().multiplyScalar(particleRadius)
+                    ];
+                    
+                    alphaCluster.forEach((p, i) => {
+                        const mesh = new THREE.Mesh(geometry, p.mat);
+                        if (i < 4) mesh.position.copy(alphaPositions[i]);
+                        alphaObj.add(mesh);
+                    });
+                    alphaObj.userData = { type: 'alpha', dir: new THREE.Vector3(1, 0.5, 0.2).normalize() };
+                    ejectionGroup.add(alphaObj);
+                } else if (selectedIsotope.type === "Beta Minus") {
+                    const eGeo = new THREE.SphereGeometry(0.1, 12, 12);
+                    const eMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                    const electron = new THREE.Mesh(eGeo, eMat);
+                    electron.userData = { type: 'beta', dir: new THREE.Vector3(-1, 0.2, 0).normalize() };
+                    ejectionGroup.add(electron);
+                    
+                    const vGeo = new THREE.SphereGeometry(0.05, 8, 8);
+                    const vMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.7 });
+                    const neutrino = new THREE.Mesh(vGeo, vMat);
+                    neutrino.userData = { type: 'neutrino', dir: new THREE.Vector3(-0.8, -0.5, 0.5).normalize() };
+                    ejectionGroup.add(neutrino);
+                } else if (selectedIsotope.type === "Gamma") {
+                    const waveLength = 4;
+                    const points = [];
+                    for(let i=0; i<=40; i++) {
+                        const t = i/40;
+                        points.push(new THREE.Vector3(t*waveLength - 2, Math.sin(t*20)*0.2, 0));
+                    }
+                    const waveGeo = new THREE.BufferGeometry().setFromPoints(points);
+                    const waveMat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                    const wave = new THREE.Line(waveGeo, waveMat);
+                    
+                    const coneGeo = new THREE.ConeGeometry(0.15, 0.4, 8);
+                    const coneMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                    const arrow = new THREE.Mesh(coneGeo, coneMat);
+                    arrow.rotation.z = -Math.PI / 2;
+                    arrow.position.set(waveLength - 2, 0, 0);
+                    
+                    const gammaObj = new THREE.Group();
+                    gammaObj.add(wave);
+                    gammaObj.add(arrow);
+                    gammaObj.userData = { type: 'gamma', dir: new THREE.Vector3(1, 0, 0) };
+                    ejectionGroup.add(gammaObj);
+                }
             };
 
             const generateElectrons = () => {
@@ -427,16 +514,46 @@
                     }
                 });
             };
-            generateNucleus(); generateElectrons();
-
-            const particleGroupSetup = new THREE.Group(); scene.add(particleGroupSetup);
+            generateNucleusAndEjecta(); generateElectrons();
 
             let animId;
             const animate = () => {
                 animId = requestAnimationFrame(animate); controls.update();
                 electronGroup.children.forEach(pivot => { if (pivot.userData.speed) pivot.rotation.z += pivot.userData.speed; });
-                const { isPlaying, progress } = simState.current;
-                if (isPlaying && progress < 100) { simState.current.progress += 0.5; setAnimProgress(simState.current.progress); }
+                
+                const { isPlaying } = simState.current;
+                if (isPlaying) {
+                    if (simState.current.progress < 100) {
+                        simState.current.progress += 0.5;
+                        setAnimProgress(simState.current.progress);
+                    } else {
+                        setIsPlaying(false);
+                    }
+                }
+
+                const p = simState.current.progress / 100;
+                ejectionGroup.children.forEach(obj => {
+                    const dir = obj.userData.dir;
+                    if (obj.userData.type === 'alpha') {
+                        obj.position.copy(dir).multiplyScalar(p * 8);
+                        obj.rotation.z += 0.05;
+                        obj.scale.setScalar(p > 0 ? 1 : 0);
+                    } else if (obj.userData.type === 'beta' || obj.userData.type === 'neutrino') {
+                        obj.position.copy(dir).multiplyScalar(p * 12);
+                        obj.scale.setScalar(p > 0 ? 1 : 0);
+                    } else if (obj.userData.type === 'gamma') {
+                         obj.position.copy(dir).multiplyScalar(p * 10);
+                         obj.scale.setScalar(p > 0 ? 1 : 0);
+                    }
+                });
+                
+                if (nucleusGroup.children.length > 0 && p > 0 && p < 0.2) {
+                     nucleusGroup.position.x = (Math.random() - 0.5) * 0.1;
+                     nucleusGroup.position.y = (Math.random() - 0.5) * 0.1;
+                } else {
+                     nucleusGroup.position.set(0,0,0);
+                }
+
                 renderer.render(scene, camera);
             };
             animate();
@@ -459,7 +576,26 @@
                 </div>
                 <div className="flex-1 flex flex-col relative">
                     <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-10"><div><h1 className="text-3xl font-bold text-white mb-1">{selectedIsotope.name}</h1><div className="flex items-center gap-2"><span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">Mass: {selectedIsotope.mass}</span><span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">Atomic: {selectedIsotope.atomic}</span></div></div><div className="bg-black/50 backdrop-blur px-4 py-2 rounded-lg border border-white/10 text-center"><span className="text-xs text-slate-400 uppercase tracking-widest">Decay Type</span><div className="text-xl font-bold text-primary">{selectedIsotope.type}</div></div></div>
-                    <div ref={mountRef} className="flex-1 w-full bg-gradient-radial from-[#1a232e] to-[#020204]" />
+                    
+                    <div className="flex-1 w-full relative bg-gradient-radial from-[#1a232e] to-[#020204]">
+                         <div ref={mountRef} className="absolute inset-0" />
+                         
+                         {/* Legend Overlay */}
+                         <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur p-3 rounded-lg border border-white/10 flex flex-col gap-2">
+                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Atom Legend</div>
+                             <div className="flex items-center gap-2 text-xs text-slate-300"><div className="w-3 h-3 rounded-full bg-[#ff3333]"></div>Proton</div>
+                             <div className="flex items-center gap-2 text-xs text-slate-300"><div className="w-3 h-3 rounded-full bg-[#cccccc]"></div>Neutron</div>
+                             <div className="flex items-center gap-2 text-xs text-slate-300"><div className="w-3 h-3 rounded-full bg-[#00ffff]"></div>Electron</div>
+                         </div>
+
+                         {/* Time Control Slider Overlay */}
+                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-64 bg-black/60 backdrop-blur px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                             <button onClick={() => setIsPlaying(!isPlaying)} className="text-primary hover:text-white"><span className="material-symbols-outlined">{isPlaying ? 'pause' : 'play_arrow'}</span></button>
+                             <input type="range" min="0" max="100" value={animProgress} onChange={(e) => { setIsPlaying(false); setAnimProgress(parseFloat(e.target.value)); }} className="range-slider" />
+                             <span className="text-[10px] font-mono text-slate-400 w-8 text-right">{Math.round(animProgress)}%</span>
+                         </div>
+                    </div>
+
                     <div className="h-56 bg-surface-dark border-t border-white/10 p-4 flex flex-col gap-4 overflow-x-auto">
                         <div className="flex items-center justify-center gap-2 sm:gap-4 text-white font-display flex-nowrap min-w-max px-4">
                             <div className="flex flex-col items-center leading-none"><span className="text-xs text-slate-400 border-b border-transparent">{selectedIsotope.mass}</span><span className="text-2xl font-bold">{selectedIsotope.symbol}</span><span className="text-xs text-slate-400">{selectedIsotope.atomic}</span></div>
@@ -477,452 +613,267 @@
       };
 
       const MolecularViewer = ({ onClose }) => {
-        // ... (Same Logic)
-        const mountRef = useRef(null); const [selectedMoleculeName, setSelectedMoleculeName] = useState("Benzene"); const [searchQuery, setSearchQuery] = useState(""); const [showPi, setShowPi] = useState(false); const [showTau, setShowTau] = useState(false); const [showIonic, setShowIonic] = useState(true); const [showVDW, setShowVDW] = useState(true); const [error, setError] = useState(null); const raycaster = useRef(new THREE.Raycaster()); const atomWrappers = useRef([]); const atomMeshes = useRef([]); const moleculeList = useMemo(() => Object.keys(MOLECULES).filter(name => name.toLowerCase().includes(searchQuery.toLowerCase())), [searchQuery]); const moleculeInfo = useMemo(() => { const data = MOLECULES[selectedMoleculeName]; if (!data) return { formula: "", mass: 0 }; let mass = 0; const counts = {}; data.atoms.forEach(a => { counts[a.el] = (counts[a.el] || 0) + 1; mass += (ATOMIC_MASSES[a.el] || 0); }); let formula = ""; ["C", "H", "O", "N", "Na", "Ag", "Xe"].forEach(el => { if (counts[el]) formula += el + (counts[el] > 1 ? counts[el] : ""); }); return { formula, mass: mass.toFixed(2) }; }, [selectedMoleculeName]);
+        const mountRef = useRef(null); 
+        const [selectedMoleculeName, setSelectedMoleculeName] = useState("Benzene"); 
+        const [searchQuery, setSearchQuery] = useState(""); 
+        const [showPi, setShowPi] = useState(false); 
+        const [showTau, setShowTau] = useState(false); 
+        const [showIonic, setShowIonic] = useState(false); 
+        const [showVDW, setShowVDW] = useState(false); 
+        const [error, setError] = useState(null); 
         
+        const labelsRef = useRef([]); 
+        const moleculeList = useMemo(() => Object.keys(MOLECULES).filter(name => name.toLowerCase().includes(searchQuery.toLowerCase())), [searchQuery]); 
+
+        // Helper to calculate Chemical Formula and Molar Mass
+        const moleculeInfo = useMemo(() => {
+            const data = MOLECULES[selectedMoleculeName];
+            if (!data) return { formula: [], mass: 0, elements: [] };
+            
+            // Formula (Hill System)
+            const counts = {};
+            data.atoms.forEach(a => counts[a.el] = (counts[a.el] || 0) + 1);
+            let keys = Object.keys(counts).sort();
+            if (keys.includes('C')) {
+                // Carbon first, then Hydrogen, then alphabetical
+                keys = keys.filter(k => k !== 'C' && k !== 'H');
+                keys.unshift('C');
+                if (counts['H']) keys.splice(1, 0, 'H');
+            } else {
+                 // Alphabetical if no carbon
+                 keys.sort();
+            }
+            const formula = keys.map(k => ({ el: k, count: counts[k] }));
+
+            // Molar Mass
+            const mass = data.atoms.reduce((sum, atom) => sum + (ATOMIC_MASSES[atom.el] || 0), 0);
+
+            // Unique elements for Legend
+            const elements = keys;
+
+            return { formula, mass, elements };
+        }, [selectedMoleculeName]);
+
+        const createLabel = (text) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeText(text, 32, 32);
+            const gradient = ctx.createLinearGradient(0, 10, 0, 54);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(1, '#999999'); 
+            ctx.fillStyle = gradient;
+            ctx.fillText(text, 32, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: false });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(0.5, 0.5, 0.5); 
+            return sprite;
+        };
+
+        const createChargeVisualization = (atom, role) => {
+            const size = 1.0; 
+            const ext = 0.25; 
+            const color = role === 'cation' ? 0xff0000 : 0x0066ff;
+            const group = new THREE.Group();
+            group.position.set(atom.x, atom.y, atom.z);
+            const half = size / 2;
+            const corners = [[1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1], [-1,1,1], [-1,1,-1], [-1,-1,1], [-1,-1,-1]];
+            const points = [];
+            corners.forEach(c => {
+                const x = c[0]*half; const y = c[1]*half; const z = c[2]*half;
+                points.push(new THREE.Vector3(x,y,z), new THREE.Vector3(x - c[0]*ext, y, z));
+                points.push(new THREE.Vector3(x,y,z), new THREE.Vector3(x, y - c[1]*ext, z));
+                points.push(new THREE.Vector3(x,y,z), new THREE.Vector3(x, y, z - c[2]*ext));
+            });
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color }));
+            group.add(line);
+            return group;
+        };
+
         useEffect(() => {
             if (!window.THREE) { setError("Three.js not loaded"); return; }
             if (!mountRef.current) return;
-            const width = mountRef.current.clientWidth; const height = mountRef.current.clientHeight; const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x111111, 5, 25); const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100); camera.position.z = 8; camera.position.y = 2; const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(width, height); mountRef.current.appendChild(renderer.domElement); const controls = new THREE.OrbitControls(camera, renderer.domElement); const ambientLight = new THREE.AmbientLight(0x404040, 2); scene.add(ambientLight); const pointLight = new THREE.PointLight(0xffffff, 1, 100); pointLight.position.set(10, 10, 10); scene.add(pointLight); const moleculeGroup = new THREE.Group(); scene.add(moleculeGroup);
+            const width = mountRef.current.clientWidth; const height = mountRef.current.clientHeight; 
+            const scene = new THREE.Scene(); 
+            scene.fog = new THREE.Fog(0x111111, 5, 25); 
+            const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100); 
+            camera.position.z = 8; camera.position.y = 2; 
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); 
+            renderer.setSize(width, height); 
+            mountRef.current.appendChild(renderer.domElement); 
+            const controls = new THREE.OrbitControls(camera, renderer.domElement); 
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); scene.add(ambientLight); 
+            const pointLight = new THREE.PointLight(0xffffff, 1, 100); pointLight.position.set(10, 10, 10); scene.add(pointLight); 
+            const moleculeGroup = new THREE.Group(); scene.add(moleculeGroup);
             
             const renderMolecule = () => {
-                while(moleculeGroup.children.length > 0) moleculeGroup.remove(moleculeGroup.children[0]); atomWrappers.current = []; atomMeshes.current = []; const data = MOLECULES[selectedMoleculeName]; if(!data) return;
-                data.atoms.forEach(atom => { const radius = ELEMENT_RADII[atom.el] || 0.3; const color = ELEMENT_COLORS[atom.el] || 0xffffff; const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.2 })); sphere.position.set(atom.x, atom.y, atom.z); moleculeGroup.add(sphere); atomMeshes.current.push(sphere); });
+                while(moleculeGroup.children.length > 0) moleculeGroup.remove(moleculeGroup.children[0]); 
+                labelsRef.current = [];
+                const data = MOLECULES[selectedMoleculeName]; if(!data) return;
+
+                data.atoms.forEach(atom => { 
+                    const radius = ELEMENT_RADII[atom.el] || 0.3; 
+                    const color = ELEMENT_COLORS[atom.el] || 0xffffff; 
+                    
+                    const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.2 })); 
+                    sphere.position.set(atom.x, atom.y, atom.z); 
+                    moleculeGroup.add(sphere); 
+
+                    const label = createLabel(atom.el);
+                    moleculeGroup.add(label);
+                    labelsRef.current.push({ sprite: label, atomPos: new THREE.Vector3(atom.x, atom.y, atom.z), radius });
+
+                    if (showIonic && atom.role) {
+                        const chargeVis = createChargeVisualization(atom, atom.role);
+                        moleculeGroup.add(chargeVis);
+                    }
+
+                    if (showPi && atom.el === 'C') {
+                        const hasDouble = data.bonds.some(b => (b.source === atom.id || b.target === atom.id) && b.type === 'double');
+                        if (hasDouble) {
+                            const lobeGeo = new THREE.SphereGeometry(0.25, 16, 16);
+                            lobeGeo.scale(1, 1, 1.8);
+                            const topLobe = new THREE.Mesh(lobeGeo, new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+                            const botLobe = new THREE.Mesh(lobeGeo, new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+                            topLobe.position.set(atom.x, atom.y, atom.z + 0.4);
+                            botLobe.position.set(atom.x, atom.y, atom.z - 0.4);
+                            moleculeGroup.add(topLobe);
+                            moleculeGroup.add(botLobe);
+                        }
+                    }
+                });
+
                 data.bonds.forEach(bond => { 
-                    const s = data.atoms[bond.source], t = data.atoms[bond.target]; const start = new THREE.Vector3(s.x, s.y, s.z), end = new THREE.Vector3(t.x, t.y, t.z); const dist = start.distanceTo(end), mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                    const s = data.atoms[bond.source], t = data.atoms[bond.target]; 
+                    const start = new THREE.Vector3(s.x, s.y, s.z), end = new THREE.Vector3(t.x, t.y, t.z); 
+                    const dist = start.distanceTo(end), mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
                     const orient = new THREE.Matrix4().lookAt(start, end, new THREE.Object3D().up).multiply(new THREE.Matrix4().makeRotationX(Math.PI/2));
-                    if (bond.type !== 'ionic' && bond.type !== 'vdw') { const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, dist, 12), new THREE.MeshStandardMaterial({ color: 0x888888 })); cyl.applyMatrix4(orient); cyl.position.copy(mid); moleculeGroup.add(cyl); }
+                    
+                    if (bond.type === 'ionic') {
+                        if (showIonic) {
+                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+                            const getColor = (atom) => { if (atom.role === 'cation') return [1, 0, 0]; if (atom.role === 'anion') return [0, 0, 1]; return [1, 1, 1]; };
+                            const c1 = getColor(s); const c2 = getColor(t);
+                            const colors = new Float32Array([...c1, ...c2]);
+                            lineGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                            const line = new THREE.Line(lineGeo, new THREE.LineDashedMaterial({ vertexColors: true, dashSize: 0.1, gapSize: 0.1, opacity: 0.8, transparent: true, scale: 1 }));
+                            line.computeLineDistances();
+                            moleculeGroup.add(line);
+                        }
+                        return;
+                    }
+                    if (bond.type === 'vdw') {
+                        if (showVDW) {
+                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+                            const line = new THREE.Line(lineGeo, new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.1, gapSize: 0.1, opacity: 0.5, transparent: true }));
+                            line.computeLineDistances();
+                            moleculeGroup.add(line);
+                        }
+                        return;
+                    }
+                    if (bond.type === 'double' && showTau) {
+                        const curveHeight = 0.3;
+                        const direction = new THREE.Vector3().subVectors(end, start).normalize();
+                        const up = new THREE.Vector3(0,0,1); 
+                        let perp = new THREE.Vector3().crossVectors(direction, up).normalize().multiplyScalar(curveHeight);
+                        if (perp.lengthSq() < 0.001) perp = new THREE.Vector3(curveHeight,0,0);
+                        const c1 = new THREE.QuadraticBezierCurve3(start, mid.clone().add(perp), end);
+                        const c2 = new THREE.QuadraticBezierCurve3(start, mid.clone().sub(perp), end);
+                        [c1, c2].forEach(curve => {
+                            const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.06, 8, false), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+                            moleculeGroup.add(tube);
+                        });
+                    } else {
+                        const radius = bond.type === 'double' ? 0.08 : 0.05;
+                        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, dist, 12), new THREE.MeshStandardMaterial({ color: 0x888888 })); 
+                        cyl.applyMatrix4(orient); cyl.position.copy(mid); moleculeGroup.add(cyl);
+                    }
                 });
             };
             renderMolecule();
-            const animate = () => { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }; animate();
+
+            const animate = () => { 
+                requestAnimationFrame(animate); 
+                controls.update(); 
+                if (labelsRef.current && camera) {
+                    labelsRef.current.forEach(item => {
+                        const dir = new THREE.Vector3().subVectors(camera.position, item.atomPos).normalize();
+                        item.sprite.position.copy(item.atomPos).add(dir.multiplyScalar(item.radius + 0.35));
+                    });
+                }
+                renderer.render(scene, camera); 
+            }; 
+            animate();
             return () => { if (mountRef.current && renderer) mountRef.current.removeChild(renderer.domElement); renderer.dispose(); };
         }, [selectedMoleculeName, showPi, showTau, showIonic, showVDW]);
 
+        const Toggle = ({ label, checked, onChange }) => (
+            <label className="flex items-center gap-2 cursor-pointer group checkbox-wrapper mb-2 select-none">
+                <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+                    <div className="block bg-slate-800 w-10 h-6 rounded-full border border-slate-600 transition-colors"></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${checked ? 'translate-x-4 bg-white' : ''}`}></div>
+                </div>
+                <span className={`text-sm ${checked ? 'text-white' : 'text-slate-500'} group-hover:text-white transition-colors`}>{label}</span>
+            </label>
+        );
+
         return (
             <div className="fixed inset-0 z-[100] flex bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
-                <div className="w-80 border-r border-white/10 bg-[#0a0f14] flex flex-col p-6 z-10 shrink-0"><button onClick={onClose} className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined">arrow_back</span> Back</button><h2 className="text-2xl font-bold text-white mb-2">Molecular<br/><span className="text-primary">Viewer</span></h2><div className="relative mb-6"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span><input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white"/></div><div className="flex-1 overflow-y-auto molecule-scroll pr-2 space-y-2 mb-6">{moleculeList.map(name => (<button key={name} onClick={() => setSelectedMoleculeName(name)} className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex justify-between ${selectedMoleculeName === name ? 'bg-primary/20 text-primary border border-primary/50' : 'text-slate-400 hover:bg-white/5'}`}>{name}</button>))}</div></div><div className="flex-1 relative bg-gradient-to-br from-gray-900 to-black"><div ref={mountRef} className="w-full h-full cursor-move" /></div>
-            </div>
-        );
-      };
-
-      // --- Eclipse & Solar System Simulation ---
-      const EclipseSimulation = ({ onClose }) => {
-        const mountRef = useRef(null);
-        
-        // Simulation State
-        const [isPlaying, setIsPlaying] = useState(true);
-        const [viewMode, setViewMode] = useState('earth'); // 'space' or 'earth'
-        const [sunTemp, setSunTemp] = useState(5800); // Kelvin
-        const [moonDist, setMoonDist] = useState(384400); // km
-        const [timeline, setTimeline] = useState(0); // 0 to 100
-        const [isMinimized, setIsMinimized] = useState(false);
-        const [status, setStatus] = useState("NOT ECLIPSED");
-        const [isEclipsed, setIsEclipsed] = useState(false);
-
-        // Constants
-        const PLANETS = useMemo(() => [
-            { name: "Mercury", dist: 20, r: 0.8, color: 0xA5A5A5, speed: 4.1 },
-            { name: "Venus", dist: 35, r: 1.2, color: 0xE3BB76, speed: 1.6 },
-            { name: "Earth", dist: 50, r: 1.3, color: 0x2233FF, speed: 1.0 }, // Earth ref
-            { name: "Mars", dist: 70, r: 0.9, color: 0xDD4422, speed: 0.5 },
-            { name: "Jupiter", dist: 100, r: 3.5, color: 0xD9A07E, speed: 0.08 },
-            { name: "Saturn", dist: 140, r: 3.0, color: 0xF4D03F, speed: 0.03, ring: true },
-            { name: "Uranus", dist: 180, r: 2.0, color: 0x4FD0E7, speed: 0.01 },
-            { name: "Neptune", dist: 210, r: 1.9, color: 0x3366FF, speed: 0.006 }
-        ], []);
-
-        // Helper: Temp to Color
-        const getStarColor = (temp) => {
-            const t = Math.max(2000, Math.min(12000, temp));
-            const color = new THREE.Color();
-            if (t < 6000) {
-                const p = (t - 2000) / 4000;
-                color.setRGB(1, 0.2 + 0.8 * p, 0.8 * p);
-            } else {
-                const p = (t - 6000) / 6000;
-                color.setRGB(1 - 0.4 * p, 1 - 0.2 * p, 1);
-            }
-            return color;
-        };
-
-        const simRef = useRef({
-            scene: null, camera: null, renderer: null, controls: null,
-            objects: {}, animId: null, time: 0
-        });
-
-        // Initialize Three.js
-        useEffect(() => {
-            if (!mountRef.current) return;
-            
-            const w = mountRef.current.clientWidth;
-            const h = mountRef.current.clientHeight;
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); // Space Black
-
-            // Camera
-            const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 2000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-            renderer.setSize(w, h);
-            renderer.shadowMap.enabled = true;
-            mountRef.current.appendChild(renderer.domElement);
-
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-
-            // --- Solar System Objects ---
-            const objects = {};
-
-            // 1. Sun
-            const sunGeo = new THREE.SphereGeometry(8, 64, 64);
-            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const sun = new THREE.Mesh(sunGeo, sunMat);
-            scene.add(sun);
-            objects.sun = sun;
-
-            // Sun Light
-            const sunLight = new THREE.PointLight(0xffffff, 2, 800);
-            scene.add(sunLight);
-            objects.sunLight = sunLight;
-
-            // Sun Glow (Corona) - visible always but highlighted during eclipse
-            const coronaGeo = new THREE.PlaneGeometry(30, 30);
-            const coronaMat = new THREE.MeshBasicMaterial({ 
-                color: 0xffaa00, transparent: true, opacity: 0, 
-                side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false 
-            });
-            const corona = new THREE.Mesh(coronaGeo, coronaMat);
-            scene.add(corona); // Billboard behavior added in loop
-            objects.corona = corona;
-
-            // 2. Planets
-            objects.planets = [];
-            PLANETS.forEach(p => {
-                const grp = new THREE.Group();
-                scene.add(grp);
-                
-                // Planet Mesh
-                const mesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(p.r, 32, 32),
-                    new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.7 })
-                );
-                grp.add(mesh);
-
-                // Ring for Saturn
-                if (p.ring) {
-                    const ringGeo = new THREE.RingGeometry(p.r * 1.4, p.r * 2.2, 64);
-                    const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-                    const ring = new THREE.Mesh(ringGeo, ringMat);
-                    ring.rotation.x = Math.PI / 2;
-                    grp.add(ring);
-                }
-
-                // Orbit Ring (White Line)
-                const orbitCurve = new THREE.EllipseCurve(0, 0, p.dist, p.dist, 0, 2 * Math.PI, false, 0);
-                const points = orbitCurve.getPoints(128);
-                const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const orbitMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
-                const orbitLine = new THREE.Line(orbitGeo, orbitMat);
-                orbitLine.rotation.x = Math.PI / 2;
-                scene.add(orbitLine);
-
-                objects.planets.push({ 
-                    data: p, grp, mesh
-                });
-            });
-
-            // 3. Earth System specific
-            const earthObj = objects.planets.find(p => p.data.name === "Earth");
-            const moonPivot = new THREE.Group();
-            earthObj.mesh.add(moonPivot);
-            const moon = new THREE.Mesh(
-                new THREE.SphereGeometry(0.4, 32, 32),
-                new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.9 })
-            );
-            moonPivot.add(moon);
-            objects.moonPivot = moonPivot;
-            objects.moon = moon;
-            objects.earth = earthObj.mesh; // shortcut
-
-            // 4. Atmosphere (Sky Dome for Earth View)
-            const skyGeo = new THREE.SphereGeometry(500, 32, 32);
-            const skyMat = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide, transparent: true, opacity: 0 });
-            const sky = new THREE.Mesh(skyGeo, skyMat);
-            scene.add(sky);
-            objects.sky = sky;
-
-            // 5. Starfield
-            const starGeo = new THREE.BufferGeometry();
-            const starPos = [];
-            for(let i=0; i<5000; i++) {
-                const r = 800 + Math.random() * 800;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos(2 * Math.random() - 1);
-                starPos.push(r * Math.sin(phi) * Math.cos(theta));
-                starPos.push(r * Math.sin(phi) * Math.sin(theta));
-                starPos.push(r * Math.cos(phi));
-            }
-            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-            const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5 }));
-            scene.add(stars);
-
-            simRef.current = { scene, camera, renderer, controls, objects, animId: null, time: 0 };
-
-            const handleResize = () => {
-                if(!mountRef.current) return;
-                const w = mountRef.current.clientWidth;
-                const h = mountRef.current.clientHeight;
-                camera.aspect = w/h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
-            };
-            window.addEventListener('resize', handleResize);
-
-            return () => {
-                window.removeEventListener('resize', handleResize);
-                cancelAnimationFrame(simRef.current.animId);
-                if (mountRef.current && renderer.domElement) {
-                    mountRef.current.removeChild(renderer.domElement);
-                }
-                renderer.dispose();
-            };
-        }, []);
-
-        // Simulation Loop
-        useEffect(() => {
-            const loop = () => {
-                const state = simRef.current;
-                if (!state.scene) return;
-
-                state.animId = requestAnimationFrame(loop);
-
-                // Time management
-                if (isPlaying) {
-                    // Update Timeline state to reflect progression
-                    setTimeline(t => {
-                        const next = t + 0.05;
-                        return next > 100 ? 0 : next;
-                    });
-                }
-                
-                // Calculate master time from timeline state (0-100 -> 0-2PI)
-                const masterTime = (timeline / 100) * (Math.PI * 2); 
-
-                // FIX: Destructure directly from state, not state.objects
-                const { camera, controls, objects } = state; 
-                const { sun, sunLight, planets, moonPivot, moon, sky, earth, corona } = objects;
-
-                // Update Sun Appearance
-                const sColor = getStarColor(sunTemp);
-                sun.material.color.copy(sColor);
-                sunLight.color.copy(sColor);
-                corona.material.color.copy(sColor);
-
-                // Update Planets
-                planets.forEach(p => {
-                    const angle = masterTime * (1.0 / p.data.speed) * 5; // Scaling for visual speed
-                    const x = Math.cos(angle) * p.data.dist;
-                    const z = Math.sin(angle) * p.data.dist;
+                <div className="w-80 border-r border-white/10 bg-[#0a0f14] flex flex-col p-6 z-10 shrink-0">
+                    <button onClick={onClose} className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined">arrow_back</span> Back</button>
+                    <h2 className="text-2xl font-bold text-white mb-2">Molecular<br/><span className="text-primary">Viewer</span></h2>
                     
-                    p.grp.position.set(x, 0, z);
-                    p.mesh.rotation.y += 0.01;
-                });
-
-                // Update Moon
-                // Slider range 350k - 410k maps to sim units approx 4 - 6
-                const visualMoonDist = 4 + (moonDist - 350000) / 60000 * 2; 
-                moon.position.set(visualMoonDist, 0, 0);
-                
-                // Moon orbit speed relative to Earth (fast)
-                moonPivot.rotation.y = masterTime * 12;
-
-                // --- View & Eclipse Logic ---
-                if (viewMode === 'earth') {
-                    // Position camera on Earth surface facing Sun
-                    const earthPos = new THREE.Vector3();
-                    earth.getWorldPosition(earthPos);
-                    const sunPos = new THREE.Vector3(0,0,0);
-                    
-                    const toSun = new THREE.Vector3().subVectors(sunPos, earthPos).normalize();
-                    const surfaceOffset = toSun.clone().multiplyScalar(2.0); // Offset slightly above surface
-                    const camPos = earthPos.clone().add(surfaceOffset);
-                    
-                    camera.position.copy(camPos);
-                    camera.lookAt(sunPos);
-                    
-                    // Eclipse Calc
-                    const moonPos = new THREE.Vector3();
-                    moon.getWorldPosition(moonPos);
-                    
-                    const toMoon = new THREE.Vector3().subVectors(moonPos, camPos).normalize();
-                    const angle = toSun.angleTo(toMoon); // Angular separation in radians
-                    
-                    // Apparent Radii
-                    // tan(theta) = radius / distance. For small angles tan(theta) ~= theta
-                    const distToSun = camPos.distanceTo(sunPos);
-                    const distToMoon = camPos.distanceTo(moonPos);
-                    
-                    const sunApparentR = Math.atan(8 / distToSun); // Sun R=8
-                    const moonApparentR = Math.atan(0.4 / distToMoon); // Moon R=0.4
-                    
-                    // Basic overlap check
-                    const separation = angle;
-                    const combinedR = sunApparentR + moonApparentR;
-                    
-                    let coverage = 0;
-                    if (separation < combinedR) {
-                         // Simple linear approx for coverage
-                         coverage = 1.0 - (separation / combinedR);
-                         coverage = Math.max(0, Math.min(1, coverage));
-                         // Make it steeper for full eclipse feel
-                         if (separation < (sunApparentR - moonApparentR) + 0.02) coverage = 1.0; 
-                    }
-                    
-                    // Determine Status text
-                    let st = "NOT ECLIPSED";
-                    if (coverage > 0.05) st = "PARTIAL ECLIPSE";
-                    if (coverage > 0.95) st = "TOTAL ECLIPSE";
-                    else if (coverage > 0.8) st = "DEPARTING"; // Simplification for demo
-                    
-                    // Sky Color Logic
-                    // Base sky depends on Sun Temp (Hotter = Bluer, Cooler = Redder)
-                    // Darkness depends on Coverage
-                    const baseSkyColor = sColor.clone().lerp(new THREE.Color(0x87CEEB), 0.5); // Mix sun color with sky blue
-                    const darkSpaceColor = new THREE.Color(0x050505);
-                    
-                    // If eclipsed, lerp to dark
-                    const eclipseDarkness = coverage > 0.9 ? 0.95 : coverage * 0.7;
-                    const finalSky = baseSkyColor.clone().lerp(darkSpaceColor, eclipseDarkness);
-                    
-                    // If sun is very cool (Red Dwarf), sky is darker/redder naturally
-                    if (sunTemp < 3500) finalSky.multiplyScalar(0.6);
-
-                    sky.material.color.copy(finalSky);
-                    sky.material.opacity = 1;
-                    sky.position.copy(earthPos);
-                    
-                    // Ring of Fire / Corona
-                    // Billboard corona to camera
-                    corona.position.copy(sunPos);
-                    corona.lookAt(camera.position);
-                    
-                    if (coverage > 0.92) {
-                        corona.material.opacity = (coverage - 0.92) * 12; // Fade in rapidly
-                        corona.scale.setScalar(1 + Math.sin(Date.now()/100)*0.05); // Flicker
-                    } else {
-                        corona.material.opacity = 0;
-                    }
-                    
-                    // Update React State occasionally to avoid thrashing
-                    // (In a real app, use ref for status or throttle)
-                    if (Math.random() < 0.1) {
-                         setStatus(st);
-                         setIsEclipsed(coverage > 0.95);
-                    }
-
-                } else {
-                    // Space View
-                    controls.update();
-                    sky.material.opacity = 0;
-                    corona.material.opacity = 0.2; // Faint glow in space
-                    corona.lookAt(camera.position);
-                }
-
-                state.renderer.render(scene, camera);
-            };
-            loop();
-        }, [sunTemp, moonDist, viewMode, isPlaying, timeline]); // Dependencies update refs inside loop
-
-        // Sync timeline dragging
-        const onTimelineChange = (e) => {
-            const val = parseFloat(e.target.value);
-            setTimeline(val);
-            setIsPlaying(false);
-        };
-
-        return (
-            <div className="fixed inset-0 z-[100] bg-black/95 animate-in fade-in duration-300 font-display">
-                <div ref={mountRef} className="absolute inset-0 z-0 block w-full h-full" />
-                
-                {/* Back Button */}
-                <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center gap-2 bg-surface-dark/80 backdrop-blur-md px-4 py-3 rounded-full text-white font-medium hover:bg-surface-dark transition-colors border border-white/10 shadow-lg group">
-                    <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
-                    Back to Portfolio
-                </button>
-
-                {/* Surface Telemetry (Bottom Left) */}
-                <div className="absolute bottom-6 left-6 z-40 max-w-xs pointer-events-none">
-                    <div className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest pl-1">Current Mode</div>
-                    <h2 className="text-4xl font-black text-white mb-4 tracking-tighter drop-shadow-md">SURFACE TELEMETRY</h2>
-                    <div className="bg-surface-dark/90 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-2xl">
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className={`material-symbols-outlined text-2xl ${isEclipsed ? 'text-secondary animate-pulse' : 'text-yellow-500'}`}>
-                                {isEclipsed ? 'dark_mode' : 'light_mode'}
-                            </span>
-                            <span className={`font-bold text-lg uppercase ${isEclipsed ? 'text-secondary' : 'text-white'}`}>{status}</span>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed font-mono">
-                            {isEclipsed 
-                                ? "Total obstruction detected. Solar corona visible. Surface temperature dropping." 
-                                : status === "PARTIAL ECLIPSE" ? "Satellite obstructing solar vector. Ambient light diminishing."
-                                : "Clear sky. Moon is not currently obstructing solar rays."}
-                        </p>
+                    <div className="mb-6 space-y-2 border-b border-white/10 pb-6">
+                        <Toggle label="Pi Orbitals (π)" checked={showPi} onChange={setShowPi} />
+                        <Toggle label="Tau Bonds (τ)" checked={showTau} onChange={setShowTau} />
+                        <Toggle label="Van der Waals (Connection)" checked={showVDW} onChange={setShowVDW} />
+                        <Toggle label="Charge Configs (Cube)" checked={showIonic} onChange={setShowIonic} />
                     </div>
+
+                    <div className="relative mb-6"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span><input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white"/></div>
+                    <div className="flex-1 overflow-y-auto molecule-scroll pr-2 space-y-2 mb-6">{moleculeList.map(name => (<button key={name} onClick={() => setSelectedMoleculeName(name)} className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex justify-between ${selectedMoleculeName === name ? 'bg-primary/20 text-primary border border-primary/50' : 'text-slate-400 hover:bg-white/5'}`}>{name}</button>))}</div>
                 </div>
-
-                {/* Minimized Toggle */}
-                <button 
-                    onClick={() => setIsMinimized(!isMinimized)}
-                    className="absolute bottom-6 right-6 z-[60] bg-surface-dark/90 backdrop-blur border border-white/10 p-3 rounded-full text-white hover:text-primary hover:border-primary transition-all shadow-lg"
-                >
-                    <span className="material-symbols-outlined">{isMinimized ? 'tune' : 'expand_more'}</span>
-                </button>
-
-                {/* System Controls (Bottom Right) */}
-                <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-6 md:bottom-20 w-full max-w-sm bg-[#111820]/95 backdrop-blur-xl rounded-xl border border-white/10 p-6 shadow-2xl z-50 transition-all duration-300 origin-bottom-right ${isMinimized ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}>
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-6 text-white border-b border-white/10 pb-4">
-                        <span className="material-symbols-outlined text-secondary">solar_power</span>
-                        <h3 className="font-bold text-lg">System Controls</h3>
-                    </div>
-
-                    {/* View Toggles */}
-                    <div className="grid grid-cols-2 gap-1 p-1 bg-black/40 rounded-lg mb-6 border border-white/5">
-                        <button onClick={() => setViewMode('space')} className={`py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'space' ? 'bg-surface-dark text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Space View</button>
-                        <button onClick={() => setViewMode('earth')} className={`py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'earth' ? 'bg-secondary text-white shadow-neon-purple' : 'text-slate-500 hover:text-slate-300'}`}>Earth View</button>
-                    </div>
-
-                    {/* Slider 1: Temp */}
-                    <div className="mb-4 space-y-2">
-                        <div className="flex justify-between text-xs font-medium">
-                            <span className="text-slate-400">Stellar Surface Temp</span>
-                            <span className="text-yellow-400 font-mono">{Math.round(sunTemp)} K</span>
-                        </div>
-                        <input type="range" min="2000" max="12000" step="100" value={sunTemp} onChange={(e) => setSunTemp(parseFloat(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer temp-slider"/>
-                        <div className="flex justify-between text-[8px] text-slate-600 font-mono uppercase"><span>Red Dwarf</span><span>Sun</span><span>Blue Giant</span></div>
-                    </div>
-
-                    {/* Slider 2: Moon Dist */}
-                    <div className="mb-6 space-y-2">
-                        <div className="flex justify-between text-xs font-medium">
-                            <span className="text-slate-400">Lunar Distance</span>
-                            <span className="text-secondary font-mono">{moonDist.toLocaleString()} km</span>
-                        </div>
-                        <input type="range" min="350000" max="410000" step="100" value={moonDist} onChange={(e) => setMoonDist(parseFloat(e.target.value))} className="range-slider"/>
-                    </div>
-
-                    {/* Scrubber */}
-                    <div className="pt-4 border-t border-white/10">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setIsPlaying(!isPlaying)} className={`w-10 h-10 rounded-full border border-white/20 flex items-center justify-center transition-all ${isPlaying ? 'text-secondary bg-secondary/10 border-secondary' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}>
-                                <span className="material-symbols-outlined">{isPlaying ? 'pause' : 'play_arrow'}</span>
-                            </button>
-                            <div className="flex-1">
-                                <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-mono">Timeline Scrubber</div>
-                                <input type="range" min="0" max="100" step="0.1" value={timeline} onChange={onTimelineChange} className="range-slider"/>
+                
+                <div className="flex-1 relative bg-gradient-to-br from-gray-900 to-black">
+                    <div ref={mountRef} className="w-full h-full cursor-move" />
+                    
+                    {/* Top UI Bar: Formula and Molar Mass */}
+                    <div className="absolute top-0 left-0 w-full p-6 flex justify-center items-start pointer-events-none">
+                        <div className="bg-black/50 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 text-center flex gap-8 shadow-2xl">
+                            <div>
+                                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-mono mb-1">Chemical Formula</div>
+                                <div className="text-2xl font-bold text-white font-mono tracking-tight">
+                                    {moleculeInfo.formula.map((f, i) => (
+                                        <span key={i}>{f.el}<sub className="text-sm text-slate-300">{f.count > 1 ? f.count : ''}</sub></span>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="w-px bg-white/10"></div>
+                            <div>
+                                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-mono mb-1">Molar Mass</div>
+                                <div className="text-2xl font-bold text-primary font-mono">{moleculeInfo.mass.toFixed(2)} <span className="text-xs text-slate-400 font-normal">g/mol</span></div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Legend Overlay */}
+                    <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur p-4 rounded-xl border border-white/10 flex flex-col gap-3 pointer-events-none">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 border-b border-white/10 pb-2">Element Legend</div>
+                        {moleculeInfo.elements.map(el => (
+                            <div key={el} className="flex items-center gap-3 text-xs text-slate-300">
+                                <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: '#' + ELEMENT_COLORS[el].toString(16).padStart(6, '0') }}></div>
+                                <span className="font-mono">{el}</span>
+                                <span className="opacity-50 text-[10px]">{ELEMENT_NAMES[el]}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -1095,10 +1046,6 @@
 
             {activeProject === 'molecular' && (
                 <MolecularViewer onClose={() => setActiveProject(null)} />
-            )}
-            
-            {activeProject === 'eclipse' && (
-                <EclipseSimulation onClose={() => setActiveProject(null)} />
             )}
           </main>
         );
