@@ -92,14 +92,49 @@
         /* Sun Temp Slider Gradient - Realistic Stellar Evolution */
         .temp-slider {
             background: linear-gradient(to right, 
-                #4a0000 0%,    /* Dark Red 2000K */
-                #ff3300 20%,   /* Red 3000K */
+                #460000 0%,    /* Dark Red 2000K */
+                #ff3300 25%,   /* Red 3000K */
                 #ff8800 40%,   /* Orange 4000K */
-                #ffdd00 50%,   /* Yellow 5800K */
-                #ffffff 70%,   /* White 8000K */
-                #aaccff 85%,   /* White-Blue 12000K */
-                #0044ff 100%   /* Blue 30000K+ */
+                #ffdd00 60%,   /* Yellow 5800K */
+                #ffffff 80%,   /* White 8000K */
+                #64b4ff 100%   /* Blue 30000K+ */
             );
+        }
+        
+        .equation-input {
+            background: transparent;
+            border-bottom: 2px solid #334155;
+            color: white;
+            text-align: center;
+            font-family: 'Space Grotesk', monospace;
+            transition: border-color 0.2s;
+        }
+        .equation-input:focus {
+            outline: none;
+            border-color: #06bcf9;
+        }
+        /* Hide number arrows */
+        .equation-input::-webkit-outer-spin-button,
+        .equation-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .particle-input {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            color: #06bcf9;
+            font-family: monospace;
+            padding: 4px 8px;
+            width: 80px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .particle-input:focus {
+            outline: none;
+            border-color: #06bcf9;
+            background: rgba(6, 188, 249, 0.1);
         }
     </style>
   </head>
@@ -124,12 +159,12 @@
 
       const PROJECTS = [
         {
-          id: 'exploring',
-          title: 'Exploring with Curiosity',
-          category: 'Space Tech',
-          description: 'Interactive WebGL rover simulation visualizing surface data from Mars exploration missions.',
-          image: 'https://images.unsplash.com/photo-1541873676-a18131494184?q=80&w=1000&auto=format&fit=crop',
-          tags: ['Three.js', 'React'],
+          id: 'decay',
+          title: 'Decay Challenge',
+          category: 'Nuclear Physics',
+          description: 'Interactive nuclear decay simulator. Balance equations and visualize alpha, beta, and gamma radiation in 3D.',
+          image: 'https://images.unsplash.com/photo-1628151015968-3a44118d8d0f?q=80&w=1000&auto=format&fit=crop',
+          tags: ['React', 'Three.js'],
           color: 'secondary',
           url: '#'
         },
@@ -162,258 +197,82 @@
         { icon: 'palette', title: 'Other Skills', desc: 'Chess, Drawing', color: 'text-primary' },
       ];
 
-      // --- MOLECULAR DATA ---
-      const MOLECULES = {
-        "Benzene": {
-          atoms: [
-            { id: 0, el: "C", x: 1.4, y: 0, z: 0 }, { id: 1, el: "C", x: 0.7, y: 1.21, z: 0 },
-            { id: 2, el: "C", x: -0.7, y: 1.21, z: 0 }, { id: 3, el: "C", x: -1.4, y: 0, z: 0 },
-            { id: 4, el: "C", x: -0.7, y: -1.21, z: 0 }, { id: 5, el: "C", x: 0.7, y: -1.21, z: 0 },
-            { id: 6, el: "H", x: 2.4, y: 0, z: 0 }, { id: 7, el: "H", x: 1.2, y: 2.1, z: 0 },
-            { id: 8, el: "H", x: -1.2, y: 2.1, z: 0 }, { id: 9, el: "H", x: -2.4, y: 0, z: 0 },
-            { id: 10, el: "H", x: -1.2, y: -2.1, z: 0 }, { id: 11, el: "H", x: 1.2, y: -2.1, z: 0 }
-          ],
-          bonds: [
-            { source: 0, target: 1, type: "double" }, { source: 1, target: 2, type: "single" },
-            { source: 2, target: 3, type: "double" }, { source: 3, target: 4, type: "single" },
-            { source: 4, target: 5, type: "double" }, { source: 5, target: 0, type: "single" },
-            { source: 0, target: 6, type: "single" }, { source: 1, target: 7, type: "single" },
-            { source: 2, target: 8, type: "single" }, { source: 3, target: 9, type: "single" },
-            { source: 4, target: 10, type: "single" }, { source: 5, target: 11, type: "single" }
-          ]
-        },
-        "Water": {
-          atoms: [
-             { id: 0, el: "O", x: 0, y: 0, z: 0.1 },
-             { id: 1, el: "H", x: 0.8, y: -0.6, z: 0 },
-             { id: 2, el: "H", x: -0.8, y: -0.6, z: 0 }
-          ],
-          bonds: [
-             { source: 0, target: 1, type: "single" },
-             { source: 0, target: 2, type: "single" }
-          ]
-        },
-        "Methanol": {
-          atoms: [
-             { id: 0, el: "C", x: -0.7, y: 0, z: 0 },
-             { id: 1, el: "O", x: 0.7, y: 0, z: 0 },
-             { id: 2, el: "H", x: -1.0, y: 1.0, z: 0 },
-             { id: 3, el: "H", x: -1.0, y: -0.5, z: 0.9 },
-             { id: 4, el: "H", x: -1.0, y: -0.5, z: -0.9 },
-             { id: 5, el: "H", x: 1.2, y: -0.8, z: 0 }
-          ],
-          bonds: [
-             { source: 0, target: 1, type: "single" },
-             { source: 0, target: 2, type: "single" }, { source: 0, target: 3, type: "single" }, { source: 0, target: 4, type: "single" },
-             { source: 1, target: 5, type: "single" }
-          ]
-        },
-        "Ethanol": {
-            atoms: [
-                {id: 0, el: "C", x: -1.2, y: 0, z: 0}, {id: 1, el: "C", x: 0, y: 0.5, z: 0},
-                {id: 2, el: "O", x: 1.2, y: -0.2, z: 0}, {id: 3, el: "H", x: 1.8, y: 0.5, z: 0},
-                {id: 4, el: "H", x: -1.2, y: -1.1, z: 0}, {id: 5, el: "H", x: -2.1, y: 0.4, z: 0},
-                {id: 6, el: "H", x: -1.2, y: 0.4, z: 1.0}, {id: 7, el: "H", x: 0, y: 1.6, z: 0},
-                {id: 8, el: "H", x: 0, y: 0.1, z: -1.0}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "single"}, {source: 1, target: 2, type: "single"},
-                {source: 2, target: 3, type: "single"}, {source: 0, target: 4, type: "single"},
-                {source: 0, target: 5, type: "single"}, {source: 0, target: 6, type: "single"},
-                {source: 1, target: 7, type: "single"}, {source: 1, target: 8, type: "single"}
-            ]
-        },
-        "Acetic Acid": {
-            atoms: [
-                {id: 0, el: "C", x: -1.0, y: 0, z: 0},
-                {id: 1, el: "C", x: 0.5, y: 0, z: 0},
-                {id: 2, el: "O", x: 1.2, y: 1.2, z: 0},
-                {id: 3, el: "O", x: 1.1, y: -1.2, z: 0},
-                {id: 4, el: "H", x: 0.5, y: -1.8, z: 0}, // Acidic H
-                {id: 5, el: "H", x: -1.4, y: 1.0, z: 0}, {id: 6, el: "H", x: -1.4, y: -0.5, z: 0.9}, {id: 7, el: "H", x: -1.4, y: -0.5, z: -0.9}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "single"},
-                {source: 1, target: 2, type: "double"},
-                {source: 1, target: 3, type: "single"},
-                {source: 3, target: 4, type: "single"},
-                {source: 0, target: 5, type: "single"}, {source: 0, target: 6, type: "single"}, {source: 0, target: 7, type: "single"}
-            ]
-        },
-        "Butadiene": {
-            atoms: [
-                {id: 0, el: "C", x: -2, y: -0.5, z: 0}, {id: 1, el: "C", x: -0.7, y: 0.5, z: 0},
-                {id: 2, el: "C", x: 0.7, y: -0.5, z: 0}, {id: 3, el: "C", x: 2, y: 0.5, z: 0},
-                {id: 4, el: "H", x: -2, y: -1.6, z: 0}, {id: 5, el: "H", x: -2.9, y: 0.05, z: 0},
-                {id: 6, el: "H", x: -0.7, y: 1.6, z: 0}, {id: 7, el: "H", x: 0.7, y: -1.6, z: 0},
-                {id: 8, el: "H", x: 2, y: 1.6, z: 0}, {id: 9, el: "H", x: 2.9, y: -0.05, z: 0}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "double"}, {source: 1, target: 2, type: "single"},
-                {source: 2, target: 3, type: "double"}, {source: 0, target: 4, type: "single"},
-                {source: 0, target: 5, type: "single"}, {source: 1, target: 6, type: "single"},
-                {source: 2, target: 7, type: "single"}, {source: 3, target: 8, type: "single"},
-                {source: 3, target: 9, type: "single"}
-            ]
-        },
-        "Cyclohexane": {
-            atoms: [
-                {id: 0, el: "C", x: 1.4, y: 0.5, z: -0.2}, 
-                {id: 1, el: "C", x: 0.7, y: -0.7, z: 0.2},
-                {id: 2, el: "C", x: -0.7, y: -0.7, z: -0.2},
-                {id: 3, el: "C", x: -1.4, y: 0.5, z: 0.2},
-                {id: 4, el: "C", x: -0.7, y: 1.7, z: -0.2},
-                {id: 5, el: "C", x: 0.7, y: 1.7, z: 0.2},
-                {id: 6, el: "H", x: 1.4, y: 0.5, z: -1.3}, {id: 7, el: "H", x: 2.4, y: 0.5, z: 0.2},
-                {id: 8, el: "H", x: 0.7, y: -0.7, z: 1.3}, {id: 9, el: "H", x: 1.2, y: -1.6, z: -0.2},
-                {id: 10, el: "H", x: -0.7, y: -0.7, z: -1.3}, {id: 11, el: "H", x: -1.2, y: -1.6, z: 0.2},
-                {id: 12, el: "H", x: -1.4, y: 0.5, z: 1.3}, {id: 13, el: "H", x: -2.4, y: 0.5, z: -0.2},
-                {id: 14, el: "H", x: -0.7, y: 1.7, z: -1.3}, {id: 15, el: "H", x: -1.2, y: 2.6, z: 0.2},
-                {id: 16, el: "H", x: 0.7, y: 1.7, z: 1.3}, {id: 17, el: "H", x: 1.2, y: 2.6, z: -0.2}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "single"}, {source: 1, target: 2, type: "single"},
-                {source: 2, target: 3, type: "single"}, {source: 3, target: 4, type: "single"},
-                {source: 4, target: 5, type: "single"}, {source: 5, target: 0, type: "single"},
-                {source: 0, target: 6, type: "single"}, {source: 0, target: 7, type: "single"},
-                {source: 1, target: 8, type: "single"}, {source: 1, target: 9, type: "single"},
-                {source: 2, target: 10, type: "single"}, {source: 2, target: 11, type: "single"},
-                {source: 3, target: 12, type: "single"}, {source: 3, target: 13, type: "single"},
-                {source: 4, target: 14, type: "single"}, {source: 4, target: 15, type: "single"},
-                {source: 5, target: 16, type: "single"}, {source: 5, target: 17, type: "single"}
-            ]
-        },
-        "Xenon": {
-            atoms: [
-                {id: 0, el: "Xe", x: -2.0, y: 0, z: 0},
-                {id: 1, el: "Xe", x: 2.0, y: 0, z: 0}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "vdw"}
-            ]
-        },
-        "Benzaldehyde": {
-            atoms: [
-                { id: 0, el: "C", x: 1.4, y: 0, z: 0 }, { id: 1, el: "C", x: 0.7, y: 1.21, z: 0 },
-                { id: 2, el: "C", x: -0.7, y: 1.21, z: 0 }, { id: 3, el: "C", x: -1.4, y: 0, z: 0 },
-                { id: 4, el: "C", x: -0.7, y: -1.21, z: 0 }, { id: 5, el: "C", x: 0.7, y: -1.21, z: 0 },
-                { id: 6, el: "C", x: -2.8, y: 0, z: 0 },
-                { id: 7, el: "O", x: -3.5, y: 1.2, z: 0 },
-                { id: 8, el: "H", x: -3.3, y: -1.0, z: 0 }
-            ],
-            bonds: [
-                { source: 0, target: 1, type: "double" }, { source: 1, target: 2, type: "single" },
-                { source: 2, target: 3, type: "double" }, { source: 3, target: 4, type: "single" },
-                { source: 4, target: 5, type: "double" }, { source: 5, target: 0, type: "single" },
-                { source: 3, target: 6, type: "single" }, { source: 6, target: 7, type: "double" },
-                { source: 6, target: 8, type: "single" }
-            ]
-        },
-        "Sodium Acetate": {
-            atoms: [
-                {id: 0, el: "C", x: -1.0, y: 0, z: 0},
-                {id: 1, el: "C", x: 0.5, y: 0, z: 0},
-                {id: 2, el: "O", x: 1.2, y: 1.2, z: 0},
-                {id: 3, el: "O", x: 1.1, y: -1.2, z: 0, role: "anion"}, // Anion Oxygen
-                {id: 4, el: "Na", x: 3.5, y: -1.5, z: 0, role: "cation"}, // Cation Sodium
-                {id: 5, el: "H", x: -1.4, y: 1.0, z: 0}, {id: 6, el: "H", x: -1.4, y: -0.5, z: 0.9}, {id: 7, el: "H", x: -1.4, y: -0.5, z: -0.9}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "single"},
-                {source: 1, target: 2, type: "double"},
-                {source: 1, target: 3, type: "single"}, 
-                {source: 0, target: 5, type: "single"}, {source: 0, target: 6, type: "single"}, {source: 0, target: 7, type: "single"},
-                {source: 3, target: 4, type: "ionic"}
-            ]
-        },
-        "Tollen's Reagent": {
-            atoms: [
-                {id: 0, el: "Ag", x: 0, y: 0, z: 0, role: "cation"},
-                {id: 1, el: "N", x: -2.1, y: 0, z: 0},
-                {id: 2, el: "N", x: 2.1, y: 0, z: 0},
-                {id: 3, el: "H", x: -2.5, y: 0.8, z: 0}, {id: 4, el: "H", x: -2.5, y: -0.4, z: 0.7}, {id: 5, el: "H", x: -2.5, y: -0.4, z: -0.7},
-                {id: 6, el: "H", x: 2.5, y: 0.8, z: 0}, {id: 7, el: "H", x: 2.5, y: -0.4, z: 0.7}, {id: 8, el: "H", x: 2.5, y: -0.4, z: -0.7}
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "single"}, {source: 0, target: 2, type: "single"},
-                {source: 1, target: 3, type: "single"}, {source: 1, target: 4, type: "single"}, {source: 1, target: 5, type: "single"},
-                {source: 2, target: 6, type: "single"}, {source: 2, target: 7, type: "single"}, {source: 2, target: 8, type: "single"}
-            ]
-        },
-        "Dextrose": {
-            // C6H12O6 Linear
-             atoms: [
-                {id: 0, el: "C", x: 0, y: 3, z: 0}, {id: 1, el: "O", x: 1.2, y: 3.5, z: 0}, // CHO
-                {id: 2, el: "C", x: 0, y: 1.5, z: 0}, {id: 3, el: "O", x: -1.4, y: 1.5, z: 0}, // CHOH
-                {id: 4, el: "C", x: 0, y: 0, z: 0}, {id: 5, el: "O", x: 1.4, y: 0, z: 0}, // CHOH
-                {id: 6, el: "C", x: 0, y: -1.5, z: 0}, {id: 7, el: "O", x: -1.4, y: -1.5, z: 0}, // CHOH
-                {id: 8, el: "C", x: 0, y: -3, z: 0}, {id: 9, el: "O", x: 1.4, y: -3, z: 0}, // CHOH
-                {id: 10, el: "C", x: 0, y: -4.5, z: 0}, {id: 11, el: "O", x: 0, y: -5.5, z: 0}, // CH2OH
-                // Hydrogens (added for C6H12O6)
-                {id: 12, el: "H", x: -1.0, y: 3.2, z: 0}, // C0-H
-                {id: 13, el: "H", x: 1.0, y: 1.5, z: 0}, {id: 14, el: "H", x: -2.0, y: 2.0, z: 0}, // C2-H, O3-H
-                {id: 15, el: "H", x: -1.0, y: 0, z: 0}, {id: 16, el: "H", x: 2.0, y: 0.5, z: 0}, // C4-H, O5-H
-                {id: 17, el: "H", x: 1.0, y: -1.5, z: 0}, {id: 18, el: "H", x: -2.0, y: -1.0, z: 0}, // C6-H, O7-H
-                {id: 19, el: "H", x: -1.0, y: -3, z: 0}, {id: 20, el: "H", x: 2.0, y: -2.5, z: 0}, // C8-H, O9-H
-                {id: 21, el: "H", x: -1.0, y: -4.5, z: 0.5}, {id: 22, el: "H", x: 1.0, y: -4.5, z: -0.5}, {id: 23, el: "H", x: 0.5, y: -6.0, z: 0} // C10-H2, O11-H
-            ],
-            bonds: [
-                {source: 0, target: 1, type: "double"}, {source: 0, target: 2, type: "single"}, {source: 0, target: 12, type: "single"},
-                {source: 2, target: 3, type: "single"}, {source: 2, target: 4, type: "single"}, {source: 2, target: 13, type: "single"}, {source: 3, target: 14, type: "single"},
-                {source: 4, target: 5, type: "single"}, {source: 4, target: 6, type: "single"}, {source: 4, target: 15, type: "single"}, {source: 5, target: 16, type: "single"},
-                {source: 6, target: 7, type: "single"}, {source: 6, target: 8, type: "single"}, {source: 6, target: 17, type: "single"}, {source: 7, target: 18, type: "single"},
-                {source: 8, target: 9, type: "single"}, {source: 8, target: 10, type: "single"}, {source: 8, target: 19, type: "single"}, {source: 9, target: 20, type: "single"},
-                {source: 10, target: 11, type: "single"}, {source: 10, target: 21, type: "single"}, {source: 10, target: 22, type: "single"}, {source: 11, target: 23, type: "single"}
-            ]
-        },
-        "Glucopyranose": {
-             // C6H12O6 Ring
-             atoms: [
-                 {id: 0, el: "O", x: 1.2, y: 0.7, z: 0}, // Ring O
-                 {id: 1, el: "C", x: 1.2, y: -0.7, z: 0}, // C1
-                 {id: 2, el: "C", x: 0, y: -1.4, z: 0},   // C2
-                 {id: 3, el: "C", x: -1.2, y: -0.7, z: 0},// C3
-                 {id: 4, el: "C", x: -1.2, y: 0.7, z: 0}, // C4
-                 {id: 5, el: "C", x: 0, y: 1.4, z: 0},    // C5
-                 {id: 6, el: "C", x: 0, y: 2.8, z: 0},    // C6 (CH2OH)
-                 {id: 7, el: "O", x: 1.2, y: 2.8, z: 0},  // O on C6
-                 // Substituents
-                 {id: 8, el: "O", x: 2.3, y: -1.0, z: 0}, // OH on C1
-                 {id: 9, el: "O", x: 0, y: -2.6, z: 0},   // OH on C2
-                 {id: 10, el: "O", x: -2.3, y: -1.0, z: 0},// OH on C3
-                 {id: 11, el: "O", x: -2.3, y: 1.0, z: 0}, // OH on C4
-                 // Hydrogens (Simplified positions)
-                 {id: 12, el: "H", x: 2.8, y: -0.5, z: 0}, // OH-H C1
-                 {id: 13, el: "H", x: 0.5, y: -3.0, z: 0}, // OH-H C2
-                 {id: 14, el: "H", x: -2.8, y: -0.5, z: 0},// OH-H C3
-                 {id: 15, el: "H", x: -2.8, y: 1.5, z: 0}, // OH-H C4
-                 {id: 16, el: "H", x: 1.8, y: 3.2, z: 0},  // OH-H C6
-                 {id: 17, el: "H", x: 0.5, y: -0.5, z: 1.0}, // H on C1
-                 {id: 18, el: "H", x: -0.5, y: -1.0, z: 1.0},// H on C2
-                 {id: 19, el: "H", x: -0.8, y: -0.5, z: 1.0},// H on C3
-                 {id: 20, el: "H", x: -0.8, y: 0.5, z: 1.0}, // H on C4
-                 {id: 21, el: "H", x: 0, y: 1.2, z: 1.2},    // H on C5
-                 {id: 22, el: "H", x: -0.8, y: 2.8, z: 0.5}, // H1 on C6
-                 {id: 23, el: "H", x: 0.5, y: 2.8, z: -0.8}  // H2 on C6
-             ],
-             bonds: [
-                 {source: 0, target: 1, type: "single"}, {source: 1, target: 2, type: "single"},
-                 {source: 2, target: 3, type: "single"}, {source: 3, target: 4, type: "single"},
-                 {source: 4, target: 5, type: "single"}, {source: 5, target: 0, type: "single"},
-                 {source: 5, target: 6, type: "single"}, {source: 6, target: 7, type: "single"},
-                 {source: 1, target: 8, type: "single"}, {source: 8, target: 12, type: "single"},
-                 {source: 2, target: 9, type: "single"}, {source: 9, target: 13, type: "single"},
-                 {source: 3, target: 10, type: "single"}, {source: 10, target: 14, type: "single"},
-                 {source: 4, target: 11, type: "single"}, {source: 11, target: 15, type: "single"},
-                 {source: 7, target: 16, type: "single"},
-                 {source: 1, target: 17, type: "single"}, {source: 2, target: 18, type: "single"},
-                 {source: 3, target: 19, type: "single"}, {source: 4, target: 20, type: "single"},
-                 {source: 5, target: 21, type: "single"},
-                 {source: 6, target: 22, type: "single"}, {source: 6, target: 23, type: "single"}
-             ]
-        }
+      // --- NUCLEAR DATA ---
+      const ISOTOPES = [
+        { name: "Carbon-14", symbol: "C", mass: 14, atomic: 6, type: "Beta Minus", product: { mass: 14, atomic: 7, symbol: "N" }, particles: ["β⁻", "ν̄"] },
+        { name: "Tritium", symbol: "H", mass: 3, atomic: 1, type: "Beta Minus", product: { mass: 3, atomic: 2, symbol: "He" }, particles: ["β⁻", "ν̄"] },
+        { name: "Potassium-40", symbol: "K", mass: 40, atomic: 19, type: "Beta Minus", product: { mass: 40, atomic: 20, symbol: "Ca" }, particles: ["β⁻", "ν̄"] },
+        { name: "Uranium-238", symbol: "U", mass: 238, atomic: 92, type: "Alpha", product: { mass: 234, atomic: 90, symbol: "Th" }, particles: [] },
+        { name: "Uranium-235", symbol: "U", mass: 235, atomic: 92, type: "Alpha", product: { mass: 231, atomic: 90, symbol: "Th" }, particles: [] },
+        { name: "Thorium-232", symbol: "Th", mass: 232, atomic: 90, type: "Alpha", product: { mass: 228, atomic: 88, symbol: "Ra" }, particles: [] },
+        { name: "Radium-226", symbol: "Ra", mass: 226, atomic: 88, type: "Alpha", product: { mass: 222, atomic: 86, symbol: "Rn" }, particles: [] },
+        { name: "Radon-222", symbol: "Rn", mass: 222, atomic: 86, type: "Alpha", product: { mass: 218, atomic: 84, symbol: "Po" }, particles: [] },
+        { name: "Polonium-210", symbol: "Po", mass: 210, atomic: 84, type: "Alpha", product: { mass: 206, atomic: 82, symbol: "Pb" }, particles: [] },
+        { name: "Lead-210", symbol: "Pb", mass: 210, atomic: 82, type: "Beta Minus", product: { mass: 210, atomic: 83, symbol: "Bi" }, particles: ["β⁻", "ν̄"] },
+        { name: "Iodine-131", symbol: "I", mass: 131, atomic: 53, type: "Beta Minus", product: { mass: 131, atomic: 54, symbol: "Xe" }, particles: ["β⁻", "ν̄"] },
+        { name: "Technetium-99m", symbol: "Tc", mass: 99, atomic: 43, type: "Gamma", product: { mass: 99, atomic: 43, symbol: "Tc" }, particles: ["γ"] },
+        { name: "Cobalt-60", symbol: "Co", mass: 60, atomic: 27, type: "Beta Minus", product: { mass: 60, atomic: 28, symbol: "Ni" }, particles: ["β⁻", "γ", "ν̄"] },
+        { name: "Cesium-137", symbol: "Cs", mass: 137, atomic: 55, type: "Beta Minus", product: { mass: 137, atomic: 56, symbol: "Ba" }, particles: ["β⁻", "ν̄"] },
+        { name: "Strontium-90", symbol: "Sr", mass: 90, atomic: 38, type: "Beta Minus", product: { mass: 90, atomic: 39, symbol: "Y" }, particles: ["β⁻", "ν̄"] },
+        { name: "Americium-241", symbol: "Am", mass: 241, atomic: 95, type: "Alpha", product: { mass: 237, atomic: 93, symbol: "Np" }, particles: [] },
+        { name: "Plutonium-239", symbol: "Pu", mass: 239, atomic: 94, type: "Alpha", product: { mass: 235, atomic: 92, symbol: "U" }, particles: [] },
+        { name: "Neptunium-237", symbol: "Np", mass: 237, atomic: 93, type: "Alpha", product: { mass: 233, atomic: 91, symbol: "Pa" }, particles: [] },
+        { name: "Krypton-85", symbol: "Kr", mass: 85, atomic: 36, type: "Beta Minus", product: { mass: 85, atomic: 37, symbol: "Rb" }, particles: ["β⁻", "ν̄"] },
+        { name: "Sodium-24", symbol: "Na", mass: 24, atomic: 11, type: "Beta Minus", product: { mass: 24, atomic: 12, symbol: "Mg" }, particles: ["β⁻", "γ", "ν̄"] },
+        { name: "Beryllium-7", symbol: "Be", mass: 7, atomic: 4, type: "Electron Capture", product: { mass: 7, atomic: 3, symbol: "Li" }, particles: ["ν"] },
+        { name: "Rubidium-87", symbol: "Rb", mass: 87, atomic: 37, type: "Beta Minus", product: { mass: 87, atomic: 38, symbol: "Sr" }, particles: ["β⁻", "ν̄"] },
+        { name: "Californium-252", symbol: "Cf", mass: 252, atomic: 98, type: "Alpha", product: { mass: 248, atomic: 96, symbol: "Cm" }, particles: [] },
+        { name: "Oganesson-294", symbol: "Og", mass: 294, atomic: 118, type: "Alpha", product: { mass: 290, atomic: 116, symbol: "Lv" }, particles: [] }
+      ];
+
+      // --- ELECTRON CONFIGURATIONS ---
+      const SHELL_CONFIGS = {
+        1: [1], 4: [2, 2], 6: [2, 4], 11: [2, 8, 1], 19: [2, 8, 8, 1], 
+        27: [2, 8, 15, 2], 36: [2, 8, 18, 8], 37: [2, 8, 18, 8, 1], 
+        38: [2, 8, 18, 8, 2], 43: [2, 8, 18, 13, 2], 53: [2, 8, 18, 18, 7], 
+        55: [2, 8, 18, 18, 8, 1], 82: [2, 8, 18, 32, 18, 4], 84: [2, 8, 18, 32, 18, 6], 
+        86: [2, 8, 18, 32, 18, 8], 88: [2, 8, 18, 32, 18, 8, 2], 90: [2, 8, 18, 32, 18, 10, 2], 
+        92: [2, 8, 18, 32, 21, 9, 2], 93: [2, 8, 18, 32, 22, 9, 2], 94: [2, 8, 18, 32, 24, 8, 2], 
+        95: [2, 8, 18, 32, 25, 8, 2], 98: [2, 8, 18, 32, 28, 8, 2], 118: [2, 8, 18, 32, 32, 18, 8]
       };
 
+      const getElectronShells = (z) => {
+          if (SHELL_CONFIGS[z]) return SHELL_CONFIGS[z];
+          const shells = [];
+          let remaining = z;
+          const caps = [2, 8, 18, 32, 50, 72, 98];
+          for(let cap of caps) {
+              if (remaining <= 0) break;
+              let take = Math.min(remaining, cap);
+              shells.push(take);
+              remaining -= take;
+          }
+          return shells;
+      };
+
+      const PARTICLES = ["α", "β⁻", "γ", "ν", "ν̄", "e⁻"];
+
+      // --- MOLECULAR DATA ---
+      const MOLECULES = {
+        "Benzene": { atoms: [{id:0,el:"C",x:1.4,y:0,z:0},{id:1,el:"C",x:0.7,y:1.21,z:0},{id:2,el:"C",x:-0.7,y:1.21,z:0},{id:3,el:"C",x:-1.4,y:0,z:0},{id:4,el:"C",x:-0.7,y:-1.21,z:0},{id:5,el:"C",x:0.7,y:-1.21,z:0},{id:6,el:"H",x:2.4,y:0,z:0},{id:7,el:"H",x:1.2,y:2.1,z:0},{id:8,el:"H",x:-1.2,y:2.1,z:0},{id:9,el:"H",x:-2.4,y:0,z:0},{id:10,el:"H",x:-1.2,y:-2.1,z:0},{id:11,el:"H",x:1.2,y:-2.1,z:0}], bonds: [{source:0,target:1,type:"double"},{source:1,target:2,type:"single"},{source:2,target:3,type:"double"},{source:3,target:4,type:"single"},{source:4,target:5,type:"double"},{source:5,target:0,type:"single"},{source:0,target:6,type:"single"},{source:1,target:7,type:"single"},{source:2,target:8,type:"single"},{source:3,target:9,type:"single"},{source:4,target:10,type:"single"},{source:5,target:11,type:"single"}] },
+        "Water": { atoms: [{id:0,el:"O",x:0,y:0,z:0.1},{id:1,el:"H",x:0.8,y:-0.6,z:0},{id:2,el:"H",x:-0.8,y:-0.6,z:0}], bonds: [{source:0,target:1,type:"single"},{source:0,target:2,type:"single"}] },
+        "Methanol": { atoms: [{id:0,el:"C",x:-0.7,y:0,z:0},{id:1,el:"O",x:0.7,y:0,z:0},{id:2,el:"H",x:-1.0,y:1.0,z:0},{id:3,el:"H",x:-1.0,y:-0.5,z:0.9},{id:4,el:"H",x:-1.0,y:-0.5,z:-0.9},{id:5,el:"H",x:1.2,y:-0.8,z:0}], bonds: [{source:0,target:1,type:"single"},{source:0,target:2,type:"single"},{source:0,target:3,type:"single"},{source:0,target:4,type:"single"},{source:1,target:5,type:"single"}] },
+        "Ethanol": { atoms: [{id:0,el:"C",x:-1.2,y:0,z:0},{id:1,el:"C",x:0,y:0.5,z:0},{id:2,el:"O",x:1.2,y:-0.2,z:0},{id:3,el:"H",x:1.8,y:0.5,z:0},{id:4,el:"H",x:-1.2,y:-1.1,z:0},{id:5,el:"H",x:-2.1,y:0.4,z:0},{id:6,el:"H",x:-1.2,y:0.4,z:1.0},{id:7,el:"H",x:0,y:1.6,z:0},{id:8,el:"H",x:0,y:0.1,z:-1.0}], bonds: [{source:0,target:1,type:"single"},{source:1,target:2,type:"single"},{source:2,target:3,type:"single"},{source:0,target:4,type:"single"},{source:0,target:5,type:"single"},{source:0,target:6,type:"single"},{source:1,target:7,type:"single"},{source:1,target:8,type:"single"}] },
+        "Acetic Acid": { atoms: [{id:0,el:"C",x:-1.0,y:0,z:0},{id:1,el:"C",x:0.5,y:0,z:0},{id:2,el:"O",x:1.2,y:1.2,z:0},{id:3,el:"O",x:1.1,y:-1.2,z:0},{id:4,el:"H",x:0.5,y:-1.8,z:0},{id:5,el:"H",x:-1.4,y:1.0,z:0},{id:6,el:"H",x:-1.4,y:-0.5,z:0.9},{id:7,el:"H",x:-1.4,y:-0.5,z:-0.9}], bonds: [{source:0,target:1,type:"single"},{source:1,target:2,type:"double"},{source:1,target:3,type:"single"},{source:3,target:4,type:"single"},{source:0,target:5,type:"single"},{source:0,target:6,type:"single"},{source:0,target:7,type:"single"}] },
+        "Butadiene": { atoms: [{id:0,el:"C",x:-2,y:-0.5,z:0},{id:1,el:"C",x:-0.7,y:0.5,z:0},{id:2,el:"C",x:0.7,y:-0.5,z:0},{id:3,el:"C",x:2,y:0.5,z:0},{id:4,el:"H",x:-2,y:-1.6,z:0},{id:5,el:"H",x:-2.9,y:0.05,z:0},{id:6,el:"H",x:-0.7,y:1.6,z:0},{id:7,el:"H",x:0.7,y:-1.6,z:0},{id:8,el:"H",x:2,y:1.6,z:0},{id:9,el:"H",x:2.9,y:-0.05,z:0}], bonds: [{source:0,target:1,type:"double"},{source:1,target:2,type:"single"},{source:2,target:3,type:"double"},{source:0,target:4,type:"single"},{source:0,target:5,type:"single"},{source:1,target:6,type:"single"},{source:2,target:7,type:"single"},{source:3,target:8,type:"single"},{source:3,target:9,type:"single"}] },
+        "Cyclohexane": { atoms: [{id:0,el:"C",x:1.4,y:0.5,z:-0.2},{id:1,el:"C",x:0.7,y:-0.7,z:0.2},{id:2,el:"C",x:-0.7,y:-0.7,z:-0.2},{id:3,el:"C",x:-1.4,y:0.5,z:0.2},{id:4,el:"C",x:-0.7,y:1.7,z:-0.2},{id:5,el:"C",x:0.7,y:1.7,z:0.2},{id:6,el:"H",x:1.4,y:0.5,z:-1.3},{id:7,el:"H",x:2.4,y:0.5,z:0.2},{id:8,el:"H",x:0.7,y:-0.7,z:1.3},{id:9,el:"H",x:1.2,y:-1.6,z:-0.2},{id:10,el:"H",x:-0.7,y:-0.7,z:-1.3},{id:11,el:"H",x:-1.2,y:-1.6,z:0.2},{id:12,el:"H",x:-1.4,y:0.5,z:1.3},{id:13,el:"H",x:-2.4,y:0.5,z:-0.2},{id:14,el:"H",x:-0.7,y:1.7,z:-1.3},{id:15,el:"H",x:-1.2,y:2.6,z:0.2},{id:16,el:"H",x:0.7,y:1.7,z:1.3},{id:17,el:"H",x:1.2,y:2.6,z:-0.2}], bonds: [{source:0,target:1,type:"single"},{source:1,target:2,type:"single"},{source:2,target:3,type:"single"},{source:3,target:4,type:"single"},{source:4,target:5,type:"single"},{source:5,target:0,type:"single"},{source:0,target:6,type:"single"},{source:0,target:7,type:"single"},{source:1,target:8,type:"single"},{source:1,target:9,type:"single"},{source:2,target:10,type:"single"},{source:2,target:11,type:"single"},{source:3,target:12,type:"single"},{source:3,target:13,type:"single"},{source:4,target:14,type:"single"},{source:4,target:15,type:"single"},{source:5,target:16,type:"single"},{source:5,target:17,type:"single"}] },
+        "Xenon": { atoms: [{id:0,el:"Xe",x:-2.0,y:0,z:0},{id:1,el:"Xe",x:2.0,y:0,z:0}], bonds: [{source:0,target:1,type:"vdw"}] },
+        "Benzaldehyde": { atoms: [{id:0,el:"C",x:1.4,y:0,z:0},{id:1,el:"C",x:0.7,y:1.21,z:0},{id:2,el:"C",x:-0.7,y:1.21,z:0},{id:3,el:"C",x:-1.4,y:0,z:0},{id:4,el:"C",x:-0.7,y:-1.21,z:0},{id:5,el:"C",x:0.7,y:-1.21,z:0},{id:6,el:"C",x:-2.8,y:0,z:0},{id:7,el:"O",x:-3.5,y:1.2,z:0},{id:8,el:"H",x:-3.3,y:-1.0,z:0}], bonds: [{source:0,target:1,type:"double"},{source:1,target:2,type:"single"},{source:2,target:3,type:"double"},{source:3,target:4,type:"single"},{source:4,target:5,type:"double"},{source:5,target:0,type:"single"},{source:3,target:6,type:"single"},{source:6,target:7,type:"double"},{source:6,target:8,type:"single"}] },
+        "Sodium Acetate": { atoms: [{id:0,el:"C",x:-1.0,y:0,z:0},{id:1,el:"C",x:0.5,y:0,z:0},{id:2,el:"O",x:1.2,y:1.2,z:0},{id:3,el:"O",x:1.1,y:-1.2,z:0,role:"anion"},{id:4,el:"Na",x:3.5,y:-1.5,z:0,role:"cation"},{id:5,el:"H",x:-1.4,y:1.0,z:0},{id:6,el:"H",x:-1.4,y:-0.5,z:0.9},{id:7,el:"H",x:-1.4,y:-0.5,z:-0.9}], bonds: [{source:0,target:1,type:"single"},{source:1,target:2,type:"double"},{source:1,target:3,type:"single"},{source:0,target:5,type:"single"},{source:0,target:6,type:"single"},{source:0,target:7,type:"single"},{source:3,target:4,type:"ionic"}] },
+        "Tollen's Reagent": { atoms: [{id:0,el:"Ag",x:0,y:0,z:0,role:"cation"},{id:1,el:"N",x:-2.1,y:0,z:0},{id:2,el:"N",x:2.1,y:0,z:0},{id:3,el:"H",x:-2.5,y:0.8,z:0},{id:4,el:"H",x:-2.5,y:-0.4,z:0.7},{id:5,el:"H",x:-2.5,y:-0.4,z:-0.7},{id:6,el:"H",x:2.5,y:0.8,z:0},{id:7,el:"H",x:2.5,y:-0.4,z:0.7},{id:8,el:"H",x:2.5,y:-0.4,z:-0.7}], bonds: [{source:0,target:1,type:"single"},{source:0,target:2,type:"single"},{source:1,target:3,type:"single"},{source:1,target:4,type:"single"},{source:1,target:5,type:"single"},{source:2,target:6,type:"single"},{source:2,target:7,type:"single"},{source:2,target:8,type:"single"}] },
+        "Dextrose": { atoms: [{id:0,el:"C",x:0,y:3,z:0},{id:1,el:"O",x:1.2,y:3.5,z:0},{id:2,el:"C",x:0,y:1.5,z:0},{id:3,el:"O",x:-1.4,y:1.5,z:0},{id:4,el:"C",x:0,y:0,z:0},{id:5,el:"O",x:1.4,y:0,z:0},{id:6,el:"C",x:0,y:-1.5,z:0},{id:7,el:"O",x:-1.4,y:-1.5,z:0},{id:8,el:"C",x:0,y:-3,z:0},{id:9,el:"O",x:1.4,y:-3,z:0},{id:10,el:"C",x:0,y:-4.5,z:0},{id:11,el:"O",x:0,y:-5.5,z:0},{id:12,el:"H",x:-1.0,y:3.2,z:0},{id:13,el:"H",x:1.0,y:1.5,z:0},{id:14,el:"H",x:-2.0,y:2.0,z:0},{id:15,el:"H",x:-1.0,y:0,z:0},{id:16,el:"H",x:2.0,y:0.5,z:0},{id:17,el:"H",x:1.0,y:-1.5,z:0},{id:18,el:"H",x:-2.0,y:-1.0,z:0},{id:19,el:"H",x:-1.0,y:-3,z:0},{id:20,el:"H",x:2.0,y:-2.5,z:0},{id:21,el:"H",x:-1.0,y:-4.5,z:0.5},{id:22,el:"H",x:1.0,y:-4.5,z:-0.5},{id:23,el:"H",x:0.5,y:-6.0,z:0}], bonds: [{source:0,target:1,type:"double"},{source:0,target:2,type:"single"},{source:0,target:12,type:"single"},{source:2,target:3,type:"single"},{source:2,target:4,type:"single"},{source:2,target:13,type:"single"},{source:3,target:14,type:"single"},{source:4,target:5,type:"single"},{source:4,target:6,type:"single"},{source:4,target:15,type:"single"},{source:5,target:16,type:"single"},{source:6,target:7,type:"single"},{source:6,target:8,type:"single"},{source:6,target:17,type:"single"},{source:7,target:18,type:"single"},{source:8,target:9,type:"single"},{source:8,target:10,type:"single"},{source:8,target:19,type:"single"},{source:9,target:20,type:"single"},{source:10,target:11,type:"single"},{source:10,target:21,type:"single"},{source:10,target:22,type:"single"},{source:11,target:23,type:"single"}] },
+        "Glucopyranose": { atoms: [{id:0,el:"O",x:1.2,y:0.7,z:0},{id:1,el:"C",x:1.2,y:-0.7,z:0},{id:2,el:"C",x:0,y:-1.4,z:0},{id:3,el:"C",x:-1.2,y:-0.7,z:0},{id:4,el:"C",x:-1.2,y:0.7,z:0},{id:5,el:"C",x:0,y:1.4,z:0},{id:6,el:"C",x:0,y:2.8,z:0},{id:7,el:"O",x:1.2,y:2.8,z:0},{id:8,el:"O",x:2.3,y:-1.0,z:0},{id:9,el:"O",x:0,y:-2.6,z:0},{id:10,el:"O",x:-2.3,y:-1.0,z:0},{id:11,el:"O",x:-2.3,y:1.0,z:0},{id:12,el:"H",x:2.8,y:-0.5,z:0},{id:13,el:"H",x:0.5,y:-3.0,z:0},{id:14,el:"H",x:-2.8,y:-0.5,z:0},{id:15,el:"H",x:-2.8,y:1.5,z:0},{id:16,el:"H",x:1.8,y:3.2,z:0},{id:17,el:"H",x:0.5,y:-0.5,z:1.0},{id:18,el:"H",x:-0.5,y:-1.0,z:1.0},{id:19,el:"H",x:-0.8,y:-0.5,z:1.0},{id:20,el:"H",x:-0.8,y:0.5,z:1.0},{id:21,el:"H",x:0,y:1.2,z:1.2},{id:22,el:"H",x:-0.8,y:2.8,z:0.5},{id:23,el:"H",x:0.5,y:2.8,z:-0.8}], bonds: [{source:0,target:1,type:"single"},{source:1,target:2,type:"single"},{source:2,target:3,type:"single"},{source:3,target:4,type:"single"},{source:4,target:5,type:"single"},{source:5,target:0,type:"single"},{source:5,target:6,type:"single"},{source:6,target:7,type:"single"},{source:1,target:8,type:"single"},{source:8,target:12,type:"single"},{source:2,target:9,type:"single"},{source:9,target:13,type:"single"},{source:3,target:10,type:"single"},{source:10,target:14,type:"single"},{source:4,target:11,type:"single"},{source:11,target:15,type:"single"},{source:7,target:16,type:"single"},{source:1,target:17,type:"single"},{source:2,target:18,type:"single"},{source:3,target:19,type:"single"},{source:4,target:20,type:"single"},{source:5,target:21,type:"single"},{source:6,target:22,type:"single"},{source:6,target:23,type:"single"}] }
+      };
+
+      const ATOMIC_MASSES = {
+        "H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Na": 22.990, "Ag": 107.868, "Xe": 131.293
+      };
+      
       const ELEMENT_COLORS = {
         "C": 0x333333, "H": 0xFFFFFF, "O": 0xFF0000, "N": 0x0000FF, 
         "Ag": 0xC0C0C0, "Na": 0x800080, "Xe": 0x00FFFF
@@ -421,10 +280,6 @@
 
       const ELEMENT_RADII = {
         "C": 0.4, "H": 0.25, "O": 0.35, "N": 0.38, "Ag": 0.5, "Na": 0.5, "Xe": 0.5
-      };
-
-      const ATOMIC_MASSES = {
-        "H": 1.008, "C": 12.011, "N": 14.007, "O": 15.999, "Na": 22.990, "Ag": 107.868, "Xe": 131.293
       };
 
       // --- Helper Components ---
@@ -435,597 +290,723 @@
         </span>
       );
 
-      // --- Eclipse Simulation Component ---
-      const EclipseSimulation = ({ onClose }) => {
+      const ShootingStars = () => {
+        const canvasRef = useRef(null);
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          let width, height;
+          let stars = [];
+          let shootingStars = [];
+
+          const resize = () => {
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+            stars = Array.from({ length: 200 }, () => ({
+              x: Math.random() * width,
+              y: Math.random() * height,
+              size: Math.random() * 2,
+              alpha: Math.random()
+            }));
+          };
+          window.addEventListener('resize', resize);
+          resize();
+
+          const createShootingStar = () => {
+            const startX = Math.random() * width;
+            const startY = Math.random() * height * 0.5;
+            const length = Math.random() * 100 + 50;
+            const angle = Math.PI / 4; // 45 degrees
+            const speed = Math.random() * 10 + 5;
+            return { x: startX, y: startY, length, angle, speed, life: 1, opacity: 1 };
+          };
+
+          const animate = () => {
+              ctx.clearRect(0, 0, width, height);
+              
+              // Static Stars
+              stars.forEach(star => {
+                  ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                  ctx.beginPath();
+                  ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                  ctx.fill();
+              });
+
+              // Shooting Stars
+              if (Math.random() < 0.02) shootingStars.push(createShootingStar());
+              
+              shootingStars.forEach((star, index) => {
+                  star.x -= star.speed; // Move left
+                  star.y += star.speed; // Move down
+                  star.life -= 0.02;
+                  
+                  if (star.life <= 0) {
+                      shootingStars.splice(index, 1);
+                  } else {
+                      const tailX = star.x + Math.cos(star.angle) * star.length;
+                      const tailY = star.y - Math.sin(star.angle) * star.length;
+                      
+                      const grad = ctx.createLinearGradient(star.x, star.y, tailX, tailY);
+                      grad.addColorStop(0, `rgba(255, 255, 255, ${star.life})`);
+                      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                      
+                      ctx.strokeStyle = grad;
+                      ctx.lineWidth = 2;
+                      ctx.beginPath();
+                      ctx.moveTo(star.x, star.y);
+                      ctx.lineTo(tailX, tailY);
+                      ctx.stroke();
+                  }
+              });
+
+              requestAnimationFrame(animate);
+          };
+          const animId = requestAnimationFrame(animate);
+
+          return () => {
+              window.removeEventListener('resize', resize);
+              cancelAnimationFrame(animId);
+          };
+        }, []);
+        return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
+      };
+
+      // --- Decay Challenge Component ---
+      const DecayChallenge = ({ onClose }) => {
         const mountRef = useRef(null);
+        const [selectedIsotope, setSelectedIsotope] = useState(ISOTOPES[0]);
+        // Search State
+        const [searchTerm, setSearchTerm] = useState("");
         
-        // UI State
-        const [viewMode, setViewMode] = useState('space'); 
-        const [sunTemp, setSunTemp] = useState(50); // Slider 0-100
-        const [moonDist, setMoonDist] = useState(50);
-        const [simTime, setSimTime] = useState(0); 
-        const [isPlaying, setIsPlaying] = useState(true);
-        const [isControlsMinimized, setIsControlsMinimized] = useState(false);
+        // Filter logic
+        const filteredIsotopes = useMemo(() => {
+            return ISOTOPES.filter(iso => 
+                iso.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                iso.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }, [searchTerm]);
 
-        // Computed State for UI Display
-        const [displayTemp, setDisplayTemp] = useState({ k: 5800, color: '#ffdd00' });
-        const [eclipseStatus, setEclipseStatus] = useState("NOT ECLIPSED");
-
-        // Simulation State Ref (for Animation Loop to avoid stale closures)
+        // Equation State
+        const [productMain, setProductMain] = useState({ mass: "", atomic: "", symbol: "" });
+        const [productSec, setProductSec] = useState({ mass: "", atomic: "", symbol: "" });
+        const [particleInputLeft, setParticleInputLeft] = useState("");
+        const [particleInputRight, setParticleInputRight] = useState("");
+        
+        const [status, setStatus] = useState("idle"); // idle, correct, wrong
+        const [animProgress, setAnimProgress] = useState(0); // 0 to 100
+        const [isPlaying, setIsPlaying] = useState(false);
+        
+        // Sim State Ref for Animation Loop
         const simState = useRef({
-            viewMode: 'space',
-            sunTemp: 50,
-            moonDist: 50,
-            time: 0,
-            isPlaying: true,
-            prevAngle: 100 // Large init value
+            progress: 0,
+            isPlaying: false,
+            decayType: "Beta Minus"
         });
 
-        // Helper: Realistic Star Color from Slider
-        const getStarProperties = (val) => {
-            // val 0 to 100
-            let tempK, colorHex;
-            if (val < 10) { // Dark Red (2000-2500K)
-                tempK = 2000 + (val/10)*500; 
-                colorHex = 0x4a0000;
-            } else if (val < 25) { // Red (2500-3500K)
-                tempK = 2500 + ((val-10)/15)*1000; 
-                colorHex = 0xff3300;
-            } else if (val < 40) { // Orange (3500-5000K)
-                tempK = 3500 + ((val-25)/15)*1500; 
-                colorHex = 0xff8800;
-            } else if (val < 60) { // Yellow (5000-7000K) - Sun is here (~5800K)
-                tempK = 5000 + ((val-40)/20)*2000; 
-                colorHex = 0xffdd00;
-            } else if (val < 80) { // White (7000-10000K)
-                tempK = 7000 + ((val-60)/20)*3000; 
-                colorHex = 0xffffff;
-            } else if (val < 90) { // White Blue (10000-15000K)
-                tempK = 10000 + ((val-80)/10)*5000; 
-                colorHex = 0xaaccff;
-            } else { // Blue (15000-40000K)
-                tempK = 15000 + ((val-90)/10)*25000; 
-                colorHex = 0x0044ff;
-            }
-            return { temp: Math.round(tempK), color: new THREE.Color(colorHex) };
+        // Update Ref when State changes
+        useEffect(() => {
+            simState.current.isPlaying = isPlaying;
+            simState.current.decayType = selectedIsotope.type;
+            if(!isPlaying) simState.current.progress = animProgress;
+        }, [isPlaying, animProgress, selectedIsotope]);
+
+        // Parsing Helper
+        const parseParticles = (input) => {
+            return input.trim().split(/[\s,]+/).map(t => {
+                const val = t.toLowerCase();
+                if (val === 'b-' || val === 'beta-' || val === 'beta') return 'β⁻';
+                if (val === 'y' || val === 'gamma' || val === 'g') return 'γ';
+                if (val === 'v' || val === 'nu') return 'ν';
+                if (val === 'v-' || val === 'nu-' || val === 'v_') return 'ν̄';
+                if (val === 'a' || val === 'alpha') return 'α';
+                if (val === 'e' || val === 'e-') return 'e⁻';
+                return ''; // invalid tokens are empty
+            }).filter(t => t);
         }
 
-        // Sync UI state to Simulation Ref
-        useEffect(() => {
-            simState.current.viewMode = viewMode;
-            simState.current.sunTemp = sunTemp;
-            simState.current.moonDist = moonDist;
-            simState.current.isPlaying = isPlaying;
+        // Check Answer
+        const checkAnswer = () => {
+            const correctProd = selectedIsotope.product;
+            const type = selectedIsotope.type;
             
-            // Update UI Display for Temp
-            const props = getStarProperties(sunTemp);
-            setDisplayTemp({ k: props.temp, color: '#' + props.color.getHexString() });
-
-            // If dragging slider (paused), sync visual time to orbital time immediately
-            if (!isPlaying) {
-                 simState.current.time = simTime;
+            // 1. Check Main Product
+            const isMainCorrect = 
+                parseInt(productMain.mass) === correctProd.mass &&
+                parseInt(productMain.atomic) === correctProd.atomic &&
+                productMain.symbol.toLowerCase().trim() === correctProd.symbol.toLowerCase();
+            
+            // 2. Check Secondary Product (Nucleus like He-4)
+            let isSecProdCorrect = false;
+            if (type === "Alpha") {
+                const sym = productSec.symbol.toLowerCase().trim();
+                const validAlphaSyms = ['he', 'he++', 'he2+', 'α'];
+                isSecProdCorrect = 
+                    productSec.mass === "4" && 
+                    productSec.atomic === "2" && 
+                    validAlphaSyms.includes(sym);
+            } else {
+                isSecProdCorrect = productSec.mass === "" && productSec.atomic === "" && productSec.symbol === "";
             }
-        }, [viewMode, sunTemp, moonDist, isPlaying, simTime]);
 
+            // 3. Check Left Particle Input (Reactants)
+            const leftTokens = parseParticles(particleInputLeft);
+            let isLeftCorrect = false;
+            if (type === "Electron Capture") {
+                // Must contain electron
+                isLeftCorrect = leftTokens.includes('e⁻');
+            } else {
+                // Must be empty
+                isLeftCorrect = leftTokens.length === 0;
+            }
+
+            // 4. Check Right Particle Input (Product Radiation)
+            const rightTokens = parseParticles(particleInputRight);
+            const expectedRight = [...selectedIsotope.particles];
+            
+            // Normalize: In physics β⁻ and e⁻ are the same particle.
+            const normalize = (list) => list.map(p => p === 'e⁻' ? 'β⁻' : p).sort();
+            
+            const normalizedUserRight = normalize(rightTokens);
+            const normalizedExpectedRight = normalize(expectedRight);
+            
+            const isRightCorrect = JSON.stringify(normalizedUserRight) === JSON.stringify(normalizedExpectedRight);
+
+            if (isMainCorrect && isLeftCorrect && isSecProdCorrect && isRightCorrect) {
+                setStatus("correct");
+                setIsPlaying(true); // Auto play
+            } else {
+                setStatus("wrong");
+            }
+        };
+        
+        // Reset when changing isotope
+        useEffect(() => {
+            setProductMain({ mass: "", atomic: "", symbol: "" });
+            setProductSec({ mass: "", atomic: "", symbol: "" });
+            setParticleInputLeft("");
+            setParticleInputRight("");
+            setStatus("idle");
+            setAnimProgress(0);
+            setIsPlaying(false);
+            simState.current.progress = 0;
+        }, [selectedIsotope]);
+        
+        // ... (Three.js Logic)
         useEffect(() => {
             if (!mountRef.current || !window.THREE) return;
 
-            // Setup
             const width = mountRef.current.clientWidth;
             const height = mountRef.current.clientHeight;
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); 
             
-            const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            camera.position.set(0, 5, 10);
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(width, height);
-            renderer.shadowMap.enabled = true; 
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             mountRef.current.appendChild(renderer.domElement);
 
-            // Controls Safety Check
-            let controls;
-            if (typeof THREE.OrbitControls !== 'undefined') {
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-                controls.enablePan = true;
-                controls.screenSpacePanning = true;
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = true;
+            controls.screenSpacePanning = true; 
+            controls.mouseButtons = {
+                LEFT: THREE.MOUSE.ROTATE,
+                MIDDLE: THREE.MOUSE.PAN,
+                RIGHT: THREE.MOUSE.DOLLY
+            };
+
+            // Lights
+            const ambient = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xffffff, 2);
+            light.position.set(5, 5, 5);
+            scene.add(light);
+            const light2 = new THREE.PointLight(0x06bcf9, 1);
+            light2.position.set(-5, -5, -5);
+            scene.add(light2);
+
+            // Group for Nucleus
+            const nucleusGroup = new THREE.Group();
+            scene.add(nucleusGroup);
+
+            // Group for Electrons (Orbitals)
+            const electronGroup = new THREE.Group();
+            scene.add(electronGroup);
+
+            // Particles for Animation
+            const particleGroup = new THREE.Group();
+            scene.add(particleGroup);
+
+            // Data Refs for Animation
+            let protonMeshes = [];
+            let capturedElectronMesh = null;
+            let targetProton = null; // Specific proton to capture electron
+
+            // Generate Nucleus
+            const generateNucleus = () => {
+                while(nucleusGroup.children.length > 0) nucleusGroup.remove(nucleusGroup.children[0]);
+                protonMeshes = [];
                 
-                // Remap controls: Middle Mouse (Scroll Click) to Pan
-                controls.mouseButtons = {
-                    LEFT: THREE.MOUSE.ROTATE,
-                    MIDDLE: THREE.MOUSE.PAN,
-                    RIGHT: THREE.MOUSE.DOLLY
-                };
-            } else {
-                console.warn("OrbitControls not available");
-            }
+                const protonCount = selectedIsotope.atomic;
+                const neutronCount = selectedIsotope.mass - selectedIsotope.atomic;
+                const total = selectedIsotope.mass;
+                
+                const scaleFactor = Math.min(1, 50 / total); 
+                const visualProtons = Math.ceil(protonCount * scaleFactor);
+                const visualNeutrons = Math.ceil(neutronCount * scaleFactor);
+                
+                // Pack spheres tighter (0.25 factor for very dense look)
+                const geometry = new THREE.SphereGeometry(0.4, 16, 16);
+                const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 });
+                const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 50 });
 
-            // --- OBJECTS ---
-            const SUN_RADIUS = 5;
-            // Adjusted for Annular Eclipse effect (0.38 gives ideal angular size relative to Sun at default distance)
-            const MOON_RADIUS = 0.38; 
-            const EARTH_ORBIT_R = 40;
-            const EARTH_RADIUS = 1.5;
-
-            // Stars
-            const starGeo = new THREE.BufferGeometry();
-            const starPos = new Float32Array(3000 * 3);
-            for(let i=0; i<3000*3; i++) starPos[i] = (Math.random() - 0.5) * 800;
-            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.5}));
-            scene.add(stars);
-
-            // Sun
-            const sunGroup = new THREE.Group();
-            scene.add(sunGroup);
-            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
-            const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 64, 64), sunMat);
-            sunGroup.add(sunMesh);
-            const sunLight = new THREE.PointLight(0xffdd00, 2, 500);
-            sunLight.castShadow = true;
-            sunLight.shadow.mapSize.width = 2048; // High quality shadows for eclipse
-            sunLight.shadow.mapSize.height = 2048;
-            sunGroup.add(sunLight);
-            
-            // Sun Glow
-            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.3, side: THREE.BackSide });
-            const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS * 1.4, 32, 32), glowMat);
-            sunGroup.add(glowMesh);
-
-            // Solar System Pivot (holds planets)
-            const solarSystem = new THREE.Group();
-            scene.add(solarSystem);
-
-            // Planets
-            const PLANET_DATA = [
-                { name: "Mercury", r: 0.5, dist: 10, speed: 4.1, color: 0xaaaaaa },
-                { name: "Venus", r: 1.2, dist: 20, speed: 1.6, color: 0xffcc00 },
-                { name: "Mars", r: 0.8, dist: 55, speed: 0.5, color: 0xff4400 },
-                { name: "Jupiter", r: 3.5, dist: 80, speed: 0.08, color: 0xd2b48c },
-                { name: "Saturn", r: 3.0, dist: 110, speed: 0.03, color: 0xf4d03f, ring: true },
-                { name: "Uranus", r: 2.0, dist: 140, speed: 0.01, color: 0x73c6b6 },
-                { name: "Neptune", r: 1.9, dist: 170, speed: 0.006, color: 0x5dade2 },
-                { name: "Pluto", r: 0.3, dist: 200, speed: 0.004, color: 0x999999 },
-            ];
-            
-            const planetMeshes = [];
-            
-            // Trail Setup
-            const planetTrails = [];
-            const TRAIL_LENGTH = 400; // Increased from 60
-
-            PLANET_DATA.forEach(p => {
-                const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 32, 32), new THREE.MeshLambertMaterial({ color: p.color }));
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                const pivot = new THREE.Group();
-                pivot.add(mesh);
-                mesh.position.x = p.dist;
-                solarSystem.add(pivot);
-                planetMeshes.push({ pivot, speed: p.speed, mesh }); // Store mesh ref for trails
-                if(p.ring) {
-                    const ring = new THREE.Mesh(new THREE.RingGeometry(p.r * 1.4, p.r * 2.2, 32), new THREE.MeshBasicMaterial({ color: 0xaaaaaa, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
-                    ring.rotation.x = Math.PI / 2;
-                    mesh.add(ring);
+                // Cluster Algorithm
+                const clusterRadius = Math.pow(visualProtons + visualNeutrons, 1/3) * 0.25;
+                
+                for(let i=0; i<visualProtons + visualNeutrons; i++) {
+                    const isProton = i < visualProtons;
+                    const mesh = new THREE.Mesh(geometry, isProton ? pMat : nMat);
+                    
+                    const r = Math.pow(Math.random(), 1/3) * clusterRadius;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    
+                    mesh.position.x = r * Math.sin(phi) * Math.cos(theta);
+                    mesh.position.y = r * Math.sin(phi) * Math.sin(theta);
+                    mesh.position.z = r * Math.cos(phi);
+                    
+                    mesh.userData = { type: isProton ? 'proton' : 'neutron', originalPos: mesh.position.clone() };
+                    nucleusGroup.add(mesh);
+                    
+                    if (isProton) protonMeshes.push(mesh);
                 }
+                
+                // Set target proton for EC (just pick the last one, usually on outside due to random distribution)
+                if (protonMeshes.length > 0) {
+                    targetProton = protonMeshes[protonMeshes.length - 1];
+                }
+            };
 
-                // Create Trail
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(TRAIL_LENGTH * 3);
-                const colors = new Float32Array(TRAIL_LENGTH * 3);
+            // Generate Electron Shells
+            const generateElectrons = () => {
+                while(electronGroup.children.length > 0) electronGroup.remove(electronGroup.children[0]);
+                
+                const z = selectedIsotope.atomic;
+                // Use Realistic Shells
+                const shells = getElectronShells(z);
+                
+                shells.forEach((count, index) => {
+                    if (count <= 0) return;
+                    const radius = 3 + index * 1.5;
+                    
+                    // Orbit Ring
+                    const ringGeo = new THREE.TorusGeometry(radius, 0.02, 8, 64);
+                    const ringMat = new THREE.MeshBasicMaterial({ color: 0x444444, opacity: 0.3, transparent: true });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    // Add some tilt variation per shell
+                    ring.rotation.x += (Math.random() - 0.5) * 0.5;
+                    ring.rotation.y += (Math.random() - 0.5) * 0.5;
+                    electronGroup.add(ring);
 
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                    // Electrons
+                    for(let i=0; i<count; i++) {
+                        const angle = (i / count) * Math.PI * 2;
+                        const elGeo = new THREE.SphereGeometry(0.12, 8, 8);
+                        const elMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                        const el = new THREE.Mesh(elGeo, elMat);
+                        
+                        // Position on ring
+                        el.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0);
+                        
+                        // Pivot group for rotation
+                        const pivot = new THREE.Group();
+                        pivot.rotation.copy(ring.rotation); // Match ring tilt
+                        pivot.add(el);
+                        
+                        // Add animation data
+                        pivot.userData = { speed: (Math.random() * 0.05 + 0.02) * (index % 2 === 0 ? 1 : -1) };
+                        
+                        electronGroup.add(pivot);
 
-                const material = new THREE.LineBasicMaterial({
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.6,
-                    blending: THREE.AdditiveBlending
+                        // If inner shell (index 0), mark one as potential capture candidate
+                        if (index === 0 && i === 0) {
+                            capturedElectronMesh = el; // Store reference to the sphere itself
+                            // We need to know its parent pivot to animate properly, handled in loop
+                        }
+                    }
                 });
+            };
 
-                const line = new THREE.Line(geometry, material);
-                scene.add(line); // Add to scene (world coordinates)
+            generateNucleus();
+            generateElectrons();
 
-                planetTrails.push({
-                    mesh: mesh,
-                    line: line,
-                    geometry: geometry,
-                    points: []
-                });
-            });
+            // Setup Ejecta
+            const setupEjecta = () => {
+                // Clear group
+                while(particleGroup.children.length > 0) particleGroup.remove(particleGroup.children[0]);
 
-            // Earth System
-            // EarthOrbitPivot rotates around Sun (0,0,0)
-            const earthOrbitPivot = new THREE.Group();
-            solarSystem.add(earthOrbitPivot);
+                // 1. Alpha Particle
+                const alphaGroup = new THREE.Group();
+                const ag = new THREE.SphereGeometry(0.4, 16, 16);
+                const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333 });
+                const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+                const p1 = new THREE.Mesh(ag, pMat); p1.position.set(0.3, 0.3, 0);
+                const p2 = new THREE.Mesh(ag, pMat); p2.position.set(-0.3, -0.3, 0);
+                const n1 = new THREE.Mesh(ag, nMat); n1.position.set(-0.3, 0.3, 0);
+                const n2 = new THREE.Mesh(ag, nMat); n2.position.set(0.3, -0.3, 0);
+                alphaGroup.add(p1, p2, n1, n2);
+                alphaGroup.visible = false;
+                particleGroup.add(alphaGroup);
 
-            // Earth Group translated to orbit radius
-            const earthGroup = new THREE.Group();
-            earthGroup.position.x = EARTH_ORBIT_R;
-            earthOrbitPivot.add(earthGroup);
+                // 2. Beta Electron
+                const electron = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshPhongMaterial({color: 0x00ffff, emissive: 0x00ffff}));
+                electron.visible = false;
+                particleGroup.add(electron);
 
-            // Earth Mesh (Spins)
-            const earthMesh = new THREE.Mesh(
-                new THREE.SphereGeometry(EARTH_RADIUS, 64, 64), 
-                new THREE.MeshPhongMaterial({ color: 0x2233ff, specular: 0x111111, shininess: 10 })
-            );
-            earthMesh.castShadow = true;
-            earthMesh.receiveShadow = true;
-            earthGroup.add(earthMesh);
+                // 3. Neutrino
+                const neutrino = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({color: 0x888888}));
+                neutrino.visible = false;
+                particleGroup.add(neutrino);
 
-            // Moon System (Independent of Earth Spin, attached to EarthGroup)
-            const moonPivot = new THREE.Group();
-            earthGroup.add(moonPivot);
-            
-            const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 32, 32), new THREE.MeshLambertMaterial({ color: 0x888888 }));
-            moonMesh.castShadow = true;
-            moonMesh.receiveShadow = true;
-            moonPivot.add(moonMesh);
+                // 4. Gamma Wave
+                const gammaGroup = new THREE.Group();
+                const wavePoints = 50;
+                const waveGeo = new THREE.BufferGeometry();
+                const wavePos = new Float32Array(wavePoints * 3);
+                waveGeo.setAttribute('position', new THREE.BufferAttribute(wavePos, 3));
+                const waveLine = new THREE.Line(waveGeo, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+                gammaGroup.add(waveLine);
+                const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 8), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+                // Default Cone points Y+, Rotate to point X+ initially
+                arrowHead.rotation.z = -Math.PI / 2;
+                gammaGroup.add(arrowHead);
+                gammaGroup.visible = false;
+                particleGroup.add(gammaGroup);
+                
+                return { alphaGroup, electron, neutrino, gammaGroup, waveLine, arrowHead };
+            };
 
-            // Animation
+            const ejecta = setupEjecta();
+
+            // Animation Loop
             let animId;
-            let frameCount = 0; // Throttle counter
-
             const animate = () => {
                 animId = requestAnimationFrame(animate);
-                
-                // Safety check
-                if (!mountRef.current) return;
+                controls.update();
 
-                const { viewMode, sunTemp, moonDist, isPlaying, prevAngle } = simState.current;
-                
-                // Advance Time
-                if (isPlaying) {
-                    simState.current.time += 0.005;
-                    
-                    // Throttle React State Updates
-                    frameCount++;
-                    if (frameCount % 10 === 0) {
-                        setSimTime(simState.current.time);
+                // Rotate Electrons (Standard)
+                electronGroup.children.forEach(pivot => {
+                    // Stop rotation of captured electron only if captured
+                    if (pivot.userData.speed) {
+                        pivot.rotation.z += pivot.userData.speed;
                     }
+                });
+
+                // Logic
+                const { isPlaying, progress, decayType } = simState.current;
+                
+                if (isPlaying && progress < 100) {
+                    simState.current.progress += 0.5;
+                    setAnimProgress(simState.current.progress);
                 }
-                const time = simState.current.time;
 
-                // 1. Update Sun Color/Temp
-                const starProps = getStarProperties(sunTemp);
-                sunMat.color.copy(starProps.color);
-                glowMat.color.copy(starProps.color);
-                sunLight.color.copy(starProps.color);
+                const p = Math.max(0, simState.current.progress / 100); 
                 
-                // Base intensity calculation
-                let targetIntensity = 0.5 + (sunTemp / 100) * 1.5;
+                // Reset Ejecta
+                ejecta.alphaGroup.visible = false;
+                ejecta.electron.visible = false;
+                ejecta.neutrino.visible = false;
+                ejecta.gammaGroup.visible = false;
 
-                // 2. Orbital Updates
-                // Planets
-                planetMeshes.forEach(p => { p.pivot.rotation.y = time * 0.1 * p.speed; });
-                
-                // Update Trails
-                if (viewMode === 'space') {
-                    planetTrails.forEach(trail => {
-                        trail.line.visible = true;
-                        const worldPos = new THREE.Vector3();
-                        trail.mesh.getWorldPosition(worldPos);
-
-                        trail.points.push(worldPos);
-                        if (trail.points.length > TRAIL_LENGTH) {
-                            trail.points.shift();
-                        }
-
-                        const positions = trail.geometry.attributes.position.array;
-                        const colors = trail.geometry.attributes.color.array;
-                        
-                        for (let i = 0; i < trail.points.length; i++) {
-                            const p = trail.points[i];
-                            positions[i * 3] = p.x;
-                            positions[i * 3 + 1] = p.y;
-                            positions[i * 3 + 2] = p.z;
-
-                            // Fade from 0 (tail) to 1 (head)
-                            const intensity = (i / (trail.points.length - 1)) || 0;
-                            colors[i * 3] = intensity;
-                            colors[i * 3 + 1] = intensity;
-                            colors[i * 3 + 2] = intensity;
-                        }
-
-                        trail.geometry.setDrawRange(0, trail.points.length);
-                        trail.geometry.attributes.position.needsUpdate = true;
-                        trail.geometry.attributes.color.needsUpdate = true;
-                    });
-                } else {
-                    planetTrails.forEach(trail => trail.line.visible = false);
-                }
-                
-                // Earth Orbit around Sun
-                earthOrbitPivot.rotation.y = time * 0.05; 
-                
-                // Earth Spin (Day/Night cycle)
-                earthMesh.rotation.y = time * 0.5;
-
-                // Moon Orbit around Earth
-                // Mapping slider to range [3.5, 6.0] to facilitate Annular eclipses
-                const currentMoonDist = 3.5 + (moonDist / 100) * 2.5; 
-                moonMesh.position.x = currentMoonDist;
-                // Moon orbits faster than Earth around Sun
-                moonPivot.rotation.y = time * 0.8; 
-
-                // 3. View Mode Logic
-                if (viewMode === 'earth') {
-                    // Hide Planets & Earth Mesh
-                    planetMeshes.forEach(p => p.pivot.visible = false);
-                    earthMesh.visible = false;
-                    // Faint stars in atmosphere
-                    stars.material.opacity = 0.2;
-                    stars.material.transparent = true;
-
-                    // Camera Position: On Earth Surface, Looking at Sun
-                    const earthPos = new THREE.Vector3();
-                    earthMesh.getWorldPosition(earthPos);
-                    const sunPos = new THREE.Vector3(0,0,0);
-                    const moonPos = new THREE.Vector3();
-                    moonMesh.getWorldPosition(moonPos);
-
-                    const toSun = new THREE.Vector3().subVectors(sunPos, earthPos);
-                    const distToSun = toSun.length();
-                    toSun.normalize();
+                // Handle Animations
+                if (decayType === "Alpha") {
+                    ejecta.alphaGroup.visible = p > 0;
+                    ejecta.alphaGroup.position.set(5 * p, 2 * p, 0);
+                    ejecta.alphaGroup.rotation.z += 0.1;
                     
-                    const toMoon = new THREE.Vector3().subVectors(moonPos, earthPos);
-                    const distToMoon = toMoon.length();
-                    toMoon.normalize();
-                    
-                    const camPos = earthPos.clone().add(toSun.multiplyScalar(EARTH_RADIUS + 0.1));
-                    camera.position.copy(camPos);
-                    camera.lookAt(0, 0, 0); 
+                    // Shrink 4 random nucleons
+                    for(let i=0; i<4; i++) { if(nucleusGroup.children[i]) nucleusGroup.children[i].visible = p < 0.1; }
 
-                    if (controls) controls.enabled = false;
+                } else if (decayType === "Beta Minus") {
+                    ejecta.electron.visible = p > 0;
+                    ejecta.neutrino.visible = p > 0;
+                    ejecta.electron.position.set(6 * p, 2 * p, 0);
+                    ejecta.neutrino.position.set(-6 * p, -2 * p, 0);
 
-                    // --- Eclipse Calculation ---
-                    // Calculate angle between View-to-Sun and View-to-Moon
-                    const angle = toSun.angleTo(toMoon); // radians
-
-                    // Apparent Sizes (approx tan(theta) = r/d)
-                    const appRadSun = Math.atan(SUN_RADIUS / distToSun);
-                    const appRadMoon = Math.atan(MOON_RADIUS / distToMoon);
-                    const totalRad = appRadSun + appRadMoon;
-                    
-                    // Determine Status
-                    let status = "NOT ECLIPSED";
-                    let coverage = 0; // 0 to 1 (1 = max overlap possible)
-
-                    // Simple overlap logic
-                    if (angle < totalRad) {
-                        // Normalize coverage roughly: 0 at edge, 1 at center
-                        coverage = 1 - (angle / totalRad);
-                        
-                        if (angle < prevAngle) {
-                            status = "ECLIPSING";
-                        } else {
-                            status = "DEPARTING";
-                        }
-
-                        // Check Totality or Annularity
-                        // We use a small epsilon for visual alignment
-                        if (angle < Math.abs(appRadSun - appRadMoon) + 0.005) {
-                             // If Moon appears smaller than Sun, it's Annular
-                             if (appRadMoon < appRadSun) {
-                                 status = "FULLY ECLIPSED (ANNULAR)";
-                             } else {
-                                 status = "FULLY ECLIPSED (TOTAL)";
-                             }
-                             if (angle > prevAngle) {
-                                status += " [DEPARTING]";
-                             }
-                        }
-                    } else if (prevAngle < totalRad && angle >= totalRad) {
-                        status = "FULLY DEPARTED";
+                    // Neutron -> Proton
+                    const neutron = nucleusGroup.children.find(c => c.userData.type === 'neutron');
+                    if (neutron) {
+                        neutron.material = p > 0.1 ? new THREE.MeshPhongMaterial({ color: 0xff3333 }) : new THREE.MeshPhongMaterial({ color: 0xcccccc });
                     }
 
-                    // Update Ref
-                    simState.current.prevAngle = angle;
-                    
-                    // Update DOM (Throttle)
-                    if (frameCount % 10 === 0) setEclipseStatus(status);
+                } else if (decayType === "Gamma") {
+                    ejecta.gammaGroup.visible = p > 0;
+                    if (p > 0) {
+                        const phase = simState.current.progress * 0.5;
+                        ejecta.gammaGroup.position.set(8 * p, 0, 0);
+                        const positions = ejecta.waveLine.geometry.attributes.position.array;
+                        const tailLen = 4;
+                        for(let i=0; i<50; i++) {
+                            const x = - (i / 49) * tailLen; 
+                            positions[i*3] = x;
+                            positions[i*3+1] = 0.3 * Math.sin(x * 5 - phase); 
+                            positions[i*3+2] = 0;
+                        }
+                        ejecta.waveLine.geometry.attributes.position.needsUpdate = true;
 
-                    // --- Dynamic Lighting / Sky Color ---
-                    // Base Sky Color derived from Sun Color + Atmosphere Blue
-                    const atmosphereBase = new THREE.Color(0x87CEEB);
-                    const sunBaseColor = starProps.color.clone();
-                    // Mix them: 70% atmosphere, 30% sun tint
-                    const dayColor = atmosphereBase.lerp(sunBaseColor, 0.3);
-                    
-                    const nightColor = new THREE.Color(0x050510); // Deep twilight
-
-                    // Dim factor: stronger dimming when coverage is high
-                    let dimFactor = 0;
-                    if (status !== "NOT ECLIPSED" && status !== "FULLY DEPARTED") {
-                        // Cubic dimming for dramatic finish
-                        dimFactor = Math.pow(coverage, 3); 
+                        // Dynamic Arrow Direction
+                        // Calculate slope of sine wave at x=0 (the head)
+                        // y = A * sin(kx - phase) => y' = A*k * cos(kx - phase)
+                        // At x=0: y' = 0.3 * 5 * cos(-phase) = 1.5 * cos(-phase)
+                        const slope = 1.5 * Math.cos(-phase);
+                        // Base rotation is -PI/2 (pointing Right). Add slope angle.
+                        ejecta.arrowHead.rotation.z = -Math.PI / 2 + Math.atan(slope);
                     }
+                    if (p > 0 && p < 0.5) {
+                        nucleusGroup.position.x = (Math.random() - 0.5) * 0.2;
+                        nucleusGroup.position.y = (Math.random() - 0.5) * 0.2;
+                    } else { nucleusGroup.position.set(0,0,0); }
 
-                    // Interpolate Sky
-                    scene.background = dayColor.lerp(nightColor, dimFactor);
-                    
-                    // Dim Environment Light
-                    // Keep slightly higher minimum so we can see the "Ring" if annular
-                    // The ring is emissive (BasicMaterial) so it ignores lights, but the 'corona' needs to be visible
-                    sunLight.intensity = targetIntensity * (1 - dimFactor * 0.98);
-
-                } else {
-                    // Space View
-                    planetMeshes.forEach(p => p.pivot.visible = true);
-                    earthMesh.visible = true;
-                    stars.material.opacity = 1;
-                    stars.visible = true;
-                    scene.background = new THREE.Color(0x000000); 
-                    
-                    sunLight.intensity = targetIntensity;
-
-                    if (controls) {
-                        controls.enabled = true;
-                        controls.update();
-                    }
+                } else if (decayType === "Electron Capture") {
+                     // Phase 1: Electron spirals IN to specific proton (p 0 to 0.5)
+                     if (p > 0 && p <= 0.5 && capturedElectronMesh && targetProton) {
+                         capturedElectronMesh.visible = true;
+                         
+                         // We need the world position of the target proton
+                         const targetPos = new THREE.Vector3();
+                         targetProton.getWorldPosition(targetPos);
+                         
+                         // Cheat: stop rotation for capture visual
+                         const pivot = capturedElectronMesh.parent;
+                         pivot.userData.speed = 0; // Stop rotation
+                         
+                         // Lerp factor
+                         const t = p * 2; // 0 to 1
+                         
+                         // Initial pos (approximate)
+                         const startPos = new THREE.Vector3(3, 0, 0); 
+                         capturedElectronMesh.position.lerpVectors(startPos, targetProton.position, t);
+                         
+                     } else if (p > 0.5 && targetProton) {
+                         if (capturedElectronMesh) capturedElectronMesh.visible = false;
+                         
+                         // Phase 2: Proton turns to Neutron
+                         targetProton.material = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+                         
+                         // Phase 3: Neutrino Eject from Proton Position
+                         ejecta.neutrino.visible = true;
+                         const p2 = (p - 0.5) * 2; // 0 to 1
+                         
+                         // Move from proton pos outward
+                         const start = targetProton.position.clone();
+                         const dir = new THREE.Vector3(-1, 1, 0).normalize(); 
+                         const end = start.clone().add(dir.multiplyScalar(10));
+                         
+                         ejecta.neutrino.position.lerpVectors(start, end, p2);
+                     }
                 }
 
                 renderer.render(scene, camera);
             };
-
-            // Init Camera
-            camera.position.set(0, 40, 60);
-            if (controls) controls.target.set(0, 0, 0);
-
             animate();
 
             return () => {
                 cancelAnimationFrame(animId);
                 if (mountRef.current && renderer) {
                     mountRef.current.removeChild(renderer.domElement);
-                    renderer.dispose();
                 }
+                renderer.dispose();
             };
-        }, []); // Run once
+        }, [selectedIsotope]); 
+
+        // Helper to update state properties
+        const updateState = (setter, field, value) => {
+            setter(prev => ({ ...prev, [field]: value }));
+        };
 
         return (
-            <div className="fixed inset-0 z-[100] flex bg-black/95 animate-in fade-in duration-300">
-                <div ref={mountRef} className="absolute inset-0 z-0" />
-                
-                {/* Header / Back */}
-                <div className="absolute top-4 left-4 z-20">
-                    <button onClick={onClose} className="flex items-center gap-2 px-4 py-2 bg-black/60 text-white rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-                        <span className="material-symbols-outlined">arrow_back</span>
-                        Back to Portfolio
-                    </button>
-                </div>
-
-                {/* Main Controls Panel */}
-                <div className={`absolute bottom-6 right-6 z-20 transition-all duration-300 ${isControlsMinimized ? 'w-auto' : 'w-80'}`}>
-                    <div className="bg-[#0a1116]/90 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="fixed inset-0 z-[100] flex bg-[#0a1116] animate-in fade-in duration-300">
+                {/* Sidebar - Isotope Selector */}
+                <div className="w-72 border-r border-white/10 flex flex-col bg-surface-dark/95 backdrop-blur-md">
+                    <div className="p-4 border-b border-white/10">
+                        <button onClick={onClose} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm mb-4">
+                            <span className="material-symbols-outlined text-sm">arrow_back</span> Back
+                        </button>
+                        <h2 className="text-xl font-bold text-white"><span className="text-secondary">Decay</span> Challenge</h2>
+                        <p className="text-xs text-slate-500 mt-1">Select an isotope to begin</p>
                         
-                        {/* Panel Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5 cursor-pointer" onClick={() => setIsControlsMinimized(!isControlsMinimized)}>
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-secondary">solar_power</span>
-                                <span className="font-bold text-white text-sm">System Controls</span>
-                            </div>
-                            <span className="material-symbols-outlined text-slate-400 text-sm">
-                                {isControlsMinimized ? 'expand_less' : 'expand_more'}
-                            </span>
+                        {/* Search Input */}
+                        <div className="relative mt-4">
+                            <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">search</span>
+                            <input 
+                                type="text" 
+                                placeholder="Search isotope..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 rounded-md py-1.5 pl-8 pr-2 text-xs text-white focus:outline-none focus:border-secondary transition-colors"
+                            />
                         </div>
-
-                        {!isControlsMinimized && (
-                            <div className="p-5 space-y-6">
-                                
-                                {/* View Mode */}
-                                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-lg">
-                                    <button 
-                                        onClick={() => setViewMode('space')}
-                                        className={`py-2 text-xs font-bold rounded-md transition-all ${viewMode === 'space' ? 'bg-primary text-black' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        SPACE VIEW
-                                    </button>
-                                    <button 
-                                        onClick={() => setViewMode('earth')}
-                                        className={`py-2 text-xs font-bold rounded-md transition-all ${viewMode === 'earth' ? 'bg-secondary text-white' : 'text-slate-400 hover:text-white'}`}
-                                    >
-                                        EARTH VIEW
-                                    </button>
-                                </div>
-
-                                {/* Sun Temperature */}
-                                <div>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-slate-300">Stellar Surface Temp</span>
-                                        <span className="font-mono" style={{ color: displayTemp.color }}>
-                                            {displayTemp.k} K
-                                        </span>
-                                    </div>
-                                    <input 
-                                        type="range" min="0" max="100" 
-                                        value={sunTemp} 
-                                        onChange={(e) => setSunTemp(parseInt(e.target.value))}
-                                        className="w-full h-2 rounded-lg appearance-none cursor-pointer temp-slider"
-                                    />
-                                    <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono uppercase">
-                                        <span>Red Dwarf</span>
-                                        <span>Sun</span>
-                                        <span>Blue Giant</span>
-                                    </div>
-                                </div>
-
-                                {/* Moon Distance */}
-                                <div>
-                                    <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-slate-300">Lunar Distance</span>
-                                        <span className="font-mono text-secondary">{(384400 * (1 + (moonDist-50)/100)).toFixed(0)} km</span>
-                                    </div>
-                                    <input 
-                                        type="range" min="0" max="100" 
-                                        value={moonDist} 
-                                        onChange={(e) => setMoonDist(parseInt(e.target.value))}
-                                        className="range-slider"
-                                    />
-                                </div>
-
-                                {/* Timeline Controls */}
-                                <div className="pt-4 border-t border-white/10">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <button 
-                                            onClick={() => setIsPlaying(!isPlaying)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-full ${isPlaying ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'} border border-current transition-all`}
-                                        >
-                                            <span className="material-symbols-outlined text-sm">{isPlaying ? 'pause' : 'play_arrow'}</span>
-                                        </button>
-                                        <span className="text-xs text-slate-400 font-mono tracking-wider">TIMELINE SCRUBBER</span>
-                                    </div>
-                                    <input 
-                                        type="range" min="0" max="100" step="0.1"
-                                        value={(simTime % 100)} // Wrap visual slider
-                                        onChange={(e) => {
-                                            setIsPlaying(false);
-                                            setSimTime(parseFloat(e.target.value));
-                                        }}
-                                        className="range-slider"
-                                    />
-                                </div>
-                            </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto molecule-scroll p-2 space-y-1">
+                        {filteredIsotopes.map((iso, idx) => (
+                            <button 
+                                key={idx}
+                                onClick={() => setSelectedIsotope(iso)}
+                                className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center transition-colors ${selectedIsotope.name === iso.name ? 'bg-secondary/20 text-secondary border border-secondary/50' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                            >
+                                {iso.name}
+                                <span className="text-[10px] font-mono opacity-50">{iso.type}</span>
+                            </button>
+                        ))}
+                        {filteredIsotopes.length === 0 && (
+                            <div className="text-center text-slate-500 text-xs py-4">No isotopes found</div>
                         )}
                     </div>
                 </div>
 
-                {/* View Indicator Overlay */}
-                <div className="absolute bottom-6 left-6 pointer-events-none">
-                     <div className="text-white/50 text-[10px] font-mono mb-1">CURRENT MODE</div>
-                     <div className="text-2xl font-black text-white uppercase tracking-tighter">
-                        {viewMode === 'space' ? 'Orbital Observation' : 'Surface Telemetry'}
-                     </div>
-                     {viewMode === 'earth' && (
-                         <div className="mt-2 p-4 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 inline-block">
-                             <div className="flex items-center gap-2 mb-2">
-                                <span className={`material-symbols-outlined text-sm ${eclipseStatus.includes("FULLY") ? 'text-secondary animate-pulse' : 'text-yellow-400'}`}>
-                                    {eclipseStatus.includes("NOT") ? 'sunny' : eclipseStatus.includes("FULLY") ? 'eclipse' : 'contrast'}
+                {/* Main Content */}
+                <div className="flex-1 flex flex-col relative">
+                    
+                    {/* Header */}
+                    <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-10">
+                        <div>
+                             <h1 className="text-3xl font-bold text-white mb-1">{selectedIsotope.name}</h1>
+                             <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">
+                                    Mass: {selectedIsotope.mass}
                                 </span>
-                                <span className={`text-sm font-bold ${eclipseStatus.includes("FULLY") ? 'text-secondary' : 'text-white'}`}>
-                                    {eclipseStatus}
+                                <span className="px-2 py-1 bg-white/10 rounded text-xs font-mono text-white">
+                                    Atomic: {selectedIsotope.atomic}
                                 </span>
                              </div>
-                             <div className="text-[10px] text-slate-300 max-w-[200px] leading-tight">
-                                {eclipseStatus.includes("NOT") 
-                                    ? "Clear sky. Moon is not currently obstructing solar rays."
-                                    : eclipseStatus.includes("ANNULAR")
-                                    ? "ANNULAR ECLIPSE. Ring of Fire visible. Solar corona exposed."
-                                    : eclipseStatus.includes("TOTAL")
-                                    ? "TOTAL ECLIPSE. Totality reached. Darkness imminent."
-                                    : "Partial eclipse in progress. Ambient light diminishing."}
+                        </div>
+                        <div className="bg-black/50 backdrop-blur px-4 py-2 rounded-lg border border-white/10 text-center">
+                            <span className="text-xs text-slate-400 uppercase tracking-widest">Decay Type</span>
+                            <div className="text-xl font-bold text-primary">{selectedIsotope.type}</div>
+                        </div>
+                    </div>
+
+                    {/* 3D Canvas */}
+                    <div ref={mountRef} className="flex-1 w-full bg-gradient-radial from-[#1a232e] to-[#020204]" />
+
+                    {/* Bottom Controls */}
+                    <div className="h-56 bg-surface-dark border-t border-white/10 p-4 flex flex-col gap-4 overflow-x-auto">
+                        
+                        {/* Equation Solver */}
+                        <div className="flex items-center justify-center gap-2 sm:gap-4 text-white font-display flex-nowrap min-w-max px-4">
+                            
+                            {/* Original Isotope (Fixed) */}
+                            <div className="flex flex-col items-center leading-none">
+                                <span className="text-xs text-slate-400 border-b border-transparent">{selectedIsotope.mass}</span>
+                                <span className="text-2xl font-bold">{selectedIsotope.symbol}</span>
+                                <span className="text-xs text-slate-400">{selectedIsotope.atomic}</span>
+                            </div>
+
+                            <span className="text-slate-500">+</span>
+
+                            {/* Reactant Particle Input (Left Side) */}
+                            <div className="flex flex-col items-center justify-center">
+                                <input 
+                                    className="particle-input" 
+                                    placeholder="e-"
+                                    value={particleInputLeft}
+                                    onChange={(e) => setParticleInputLeft(e.target.value)}
+                                />
+                            </div>
+
+                            <span className="material-symbols-outlined text-slate-500 mx-2">arrow_forward</span>
+
+                            {/* Main Product Input */}
+                            <div className="flex flex-col items-center leading-none relative group">
+                                <input 
+                                    className="equation-input w-8 text-xs mb-1" placeholder="?" type="text"
+                                    value={productMain.mass} onChange={(e) => updateState(setProductMain, 'mass', e.target.value)}
+                                />
+                                <input 
+                                    className="equation-input w-16 text-2xl font-bold mb-1" placeholder="?" type="text"
+                                    value={productMain.symbol} onChange={(e) => updateState(setProductMain, 'symbol', e.target.value)}
+                                />
+                                <input 
+                                    className="equation-input w-8 text-xs" placeholder="?" type="text"
+                                    value={productMain.atomic} onChange={(e) => updateState(setProductMain, 'atomic', e.target.value)}
+                                />
+                            </div>
+
+                            <span className="text-slate-500">+</span>
+
+                            {/* Secondary Product Input */}
+                            <div className="flex flex-col items-center leading-none relative group">
+                                <input 
+                                    className="equation-input w-8 text-xs mb-1" placeholder="-" type="text"
+                                    value={productSec.mass} onChange={(e) => updateState(setProductSec, 'mass', e.target.value)}
+                                />
+                                <input 
+                                    className="equation-input w-12 text-2xl font-bold mb-1" placeholder="?" type="text"
+                                    value={productSec.symbol} onChange={(e) => updateState(setProductSec, 'symbol', e.target.value)}
+                                />
+                                <input 
+                                    className="equation-input w-8 text-xs" placeholder="-" type="text"
+                                    value={productSec.atomic} onChange={(e) => updateState(setProductSec, 'atomic', e.target.value)}
+                                />
+                            </div>
+
+                            <span className="text-slate-500">+</span>
+
+                            {/* Product Particle Input (Right Side) */}
+                            <div className="flex flex-col items-center justify-center">
+                                <input 
+                                    className="particle-input" 
+                                    placeholder="B- v-"
+                                    value={particleInputRight}
+                                    onChange={(e) => setParticleInputRight(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Check Button */}
+                            <button 
+                                onClick={checkAnswer}
+                                className={`ml-4 px-4 py-2 rounded-full font-bold text-xs transition-all ${status === 'correct' ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-slate-200'}`}
+                            >
+                                {status === 'correct' ? 'SOLVED' : 'CHECK'}
+                            </button>
+                        </div>
+
+                        {/* Feedback & Timeline */}
+                        <div className="flex flex-col items-center gap-2">
+                             <div className={`text-sm font-bold h-5 ${status === 'correct' ? 'text-green-400' : status === 'wrong' ? 'text-red-400' : 'text-transparent'}`}>
+                                 {status === 'correct' ? "That's correct! Simulating decay..." : "That's wrong, please check your equation."}
                              </div>
-                         </div>
-                     )}
+                             
+                             <div className="w-full max-w-xl flex items-center gap-4">
+                                <button 
+                                    onClick={() => setIsPlaying(!isPlaying)}
+                                    className="text-primary hover:text-white"
+                                >
+                                    <span className="material-symbols-outlined">{isPlaying ? 'pause' : 'play_arrow'}</span>
+                                </button>
+                                <input 
+                                    type="range" 
+                                    min="0" max="100" step="0.1"
+                                    value={animProgress}
+                                    onChange={(e) => {
+                                        setIsPlaying(false);
+                                        setAnimProgress(parseFloat(e.target.value));
+                                    }}
+                                    className="range-slider"
+                                />
+                             </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         );
       };
 
-      // --- 3D Molecular Viewer Component (Kept for compatibility with other button) ---
+      // --- Molecular Viewer Component ---
       const MolecularViewer = ({ onClose }) => {
         const mountRef = useRef(null);
         const [selectedMoleculeName, setSelectedMoleculeName] = useState("Benzene");
@@ -1036,470 +1017,183 @@
         const [showVDW, setShowVDW] = useState(true);
         const [error, setError] = useState(null);
         
-        // Refs for raycasting logic
         const raycaster = useRef(new THREE.Raycaster());
-        const atomWrappers = useRef([]); // Stores { mesh, sprite } pairs
-        const atomMeshes = useRef([]);   // Stores meshes for intersection
+        const atomWrappers = useRef([]); 
+        const atomMeshes = useRef([]);
 
-        // Filter molecules
         const moleculeList = useMemo(() => {
             return Object.keys(MOLECULES).filter(name => 
                 name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }, [searchQuery]);
 
-        // Calculate Formula and Mass
         const moleculeInfo = useMemo(() => {
             const data = MOLECULES[selectedMoleculeName];
             if (!data) return { formula: "", mass: 0 };
-            
             let mass = 0;
             const counts = {};
             data.atoms.forEach(a => {
                 counts[a.el] = (counts[a.el] || 0) + 1;
                 mass += (ATOMIC_MASSES[a.el] || 0);
             });
-            
-            // Format formula C H O N etc
             const order = ["C", "H", "O", "N", "Na", "Ag", "Xe"];
             let formula = "";
             order.forEach(el => {
-                if (counts[el]) {
-                    formula += el + (counts[el] > 1 ? counts[el] : "");
-                }
+                if (counts[el]) formula += el + (counts[el] > 1 ? counts[el] : "");
             });
-            // catch remaining
             Object.keys(counts).forEach(el => {
                 if (!order.includes(el)) formula += el + (counts[el] > 1 ? counts[el] : "");
             });
-
             return { formula, mass: mass.toFixed(2) };
         }, [selectedMoleculeName]);
 
         useEffect(() => {
-            // Safety check for Three.js
-            if (!window.THREE) {
-                setError("Three.js library failed to load.");
-                return;
-            }
+            if (!window.THREE) { setError("Three.js not loaded"); return; }
             if (!mountRef.current) return;
 
             let renderer, scene, camera, controls, animId;
-
             try {
-                // Three.js Setup
                 const width = mountRef.current.clientWidth;
                 const height = mountRef.current.clientHeight;
-                
                 scene = new THREE.Scene();
-                // Background is handled by CSS, keep scene transparent or dark
-                scene.background = null; 
-                
-                // Fog for depth
                 scene.fog = new THREE.Fog(0x111111, 5, 25);
-
                 camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-                camera.position.z = 8;
-                camera.position.y = 2;
-
+                camera.position.z = 8; camera.position.y = 2;
                 renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 renderer.setSize(width, height);
                 mountRef.current.appendChild(renderer.domElement);
-
-                // Check OrbitControls
-                if (THREE.OrbitControls) {
-                    controls = new THREE.OrbitControls(camera, renderer.domElement);
-                    controls.enableDamping = true;
-                    controls.dampingFactor = 0.05;
-                    // Configure controls for Middle Mouse Pan
-                    controls.enablePan = true;
-                    controls.screenSpacePanning = true; 
-                    controls.mouseButtons = {
-                        LEFT: THREE.MOUSE.ROTATE,
-                        MIDDLE: THREE.MOUSE.PAN,
-                        RIGHT: THREE.MOUSE.DOLLY
-                    };
-                } else {
-                    console.warn("OrbitControls not loaded.");
-                }
-
-                // Lights
-                const ambientLight = new THREE.AmbientLight(0x404040, 2);
-                scene.add(ambientLight);
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true; controls.enablePan = true;
                 
-                const pointLight = new THREE.PointLight(0xffffff, 1, 100);
-                pointLight.position.set(10, 10, 10);
-                scene.add(pointLight);
-                
-                const pointLight2 = new THREE.PointLight(0x06bcf9, 0.5, 100);
-                pointLight2.position.set(-10, -10, 5);
-                scene.add(pointLight2);
+                const ambientLight = new THREE.AmbientLight(0x404040, 2); scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xffffff, 1, 100); pointLight.position.set(10, 10, 10); scene.add(pointLight);
+                const pointLight2 = new THREE.PointLight(0x06bcf9, 0.5, 100); pointLight2.position.set(-10, -10, 5); scene.add(pointLight2);
+                const moleculeGroup = new THREE.Group(); scene.add(moleculeGroup);
 
-                // Group to hold molecule
-                const moleculeGroup = new THREE.Group();
-                scene.add(moleculeGroup);
-
-                // Helper to create text sprite
                 const createTextSprite = (message, color) => {
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.width = 128; // Increased size for charge symbols
-                    canvas.height = 128;
-                    context.font = "Bold 40px Arial";
-                    context.fillStyle = "rgba(0,0,0,1)";
-                    context.strokeStyle = color;
-                    context.lineWidth = 2;
-                    context.textAlign = "center";
-                    context.textBaseline = "middle";
-                    // Stroke text for outline
-                    context.strokeText(message, 64, 64);
-                    context.fillStyle = "white";
-                    context.fillText(message, 64, 64);
-                    
+                    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+                    canvas.width = 128; canvas.height = 128; ctx.font = "Bold 40px Arial";
+                    ctx.fillStyle = "rgba(0,0,0,1)"; ctx.strokeStyle = color; ctx.lineWidth = 2;
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.strokeText(message, 64, 64);
+                    ctx.fillStyle = "white"; ctx.fillText(message, 64, 64);
                     const texture = new THREE.CanvasTexture(canvas);
-                    const spriteMaterial = new THREE.SpriteMaterial({ 
-                        map: texture,
-                        depthTest: false // Render on top of own atom (we handle other occlusion via raycast)
-                    });
-                    const sprite = new THREE.Sprite(spriteMaterial);
-                    sprite.renderOrder = 999; 
-                    sprite.scale.set(0.5, 0.5, 0.5);
-                    return sprite;
-                }
+                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false }));
+                    sprite.renderOrder = 999; sprite.scale.set(0.5, 0.5, 0.5); return sprite;
+                };
 
-                // Helper to create 3D Cage
                 const createIonicCage = (radius, color) => {
-                    const s = radius * 1.6; // Size box
-                    const d = s * 0.4; // Corner line length
-                    const geometry = new THREE.BufferGeometry();
-                    const vertices = [];
-
-                    // 8 Corners of a cube
-                    const corners = [
-                        [s, s, s], [s, s, -s], [s, -s, s], [s, -s, -s],
-                        [-s, s, s], [-s, s, -s], [-s, -s, s], [-s, -s, -s]
-                    ];
-
+                    const s = radius * 1.6, d = s * 0.4;
+                    const geometry = new THREE.BufferGeometry(); const vertices = [];
+                    const corners = [[s, s, s], [s, s, -s], [s, -s, s], [s, -s, -s], [-s, s, s], [-s, s, -s], [-s, -s, s], [-s, -s, -s]];
                     corners.forEach(([x, y, z]) => {
-                        // Line parallel to X
-                        vertices.push(x, y, z);
-                        vertices.push(x > 0 ? x - d : x + d, y, z);
-                        // Line parallel to Y
-                        vertices.push(x, y, z);
-                        vertices.push(x, y > 0 ? y - d : y + d, z);
-                        // Line parallel to Z
-                        vertices.push(x, y, z);
-                        vertices.push(x, y, z > 0 ? z - d : z + d);
+                        vertices.push(x, y, z); vertices.push(x > 0 ? x - d : x + d, y, z);
+                        vertices.push(x, y, z); vertices.push(x, y, z > 0 ? z - d : z + d);
                     });
-
                     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                    const material = new THREE.LineBasicMaterial({ 
-                        color: color, 
-                        depthTest: false, // Always on top
-                        transparent: true,
-                        opacity: 0.8,
-                        linewidth: 2 
-                    });
-                    const cage = new THREE.LineSegments(geometry, material);
-                    cage.renderOrder = 998; // Just below text
-                    return cage;
-                }
+                    const cage = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: color, depthTest: false, transparent: true, opacity: 0.8 }));
+                    cage.renderOrder = 998; return cage;
+                };
 
-                // Render Molecule Function
                 const renderMolecule = () => {
-                    while(moleculeGroup.children.length > 0){ 
-                        moleculeGroup.remove(moleculeGroup.children[0]); 
-                    }
-                    
-                    // Clear refs
-                    atomWrappers.current = [];
-                    atomMeshes.current = [];
+                    while(moleculeGroup.children.length > 0) moleculeGroup.remove(moleculeGroup.children[0]);
+                    atomWrappers.current = []; atomMeshes.current = [];
+                    const data = MOLECULES[selectedMoleculeName]; if(!data) return;
 
-                    const data = MOLECULES[selectedMoleculeName];
-                    if(!data) return;
-
-                    // Create Atoms
                     data.atoms.forEach(atom => {
-                        const radius = ELEMENT_RADII[atom.el] || 0.3;
-                        const color = ELEMENT_COLORS[atom.el] || 0xffffff;
-                        const geometry = new THREE.SphereGeometry(radius, 32, 32);
-                        const material = new THREE.MeshPhysicalMaterial({ 
-                            color: color,
-                            roughness: 0.3,
-                            metalness: 0.2,
-                            clearcoat: 0.8
-                        });
-                        const sphere = new THREE.Mesh(geometry, material);
-                        sphere.position.set(atom.x, atom.y, atom.z);
-                        moleculeGroup.add(sphere);
-
-                        // Label Logic
+                        const radius = ELEMENT_RADII[atom.el] || 0.3; const color = ELEMENT_COLORS[atom.el] || 0xffffff;
+                        const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.2 }));
+                        sphere.position.set(atom.x, atom.y, atom.z); moleculeGroup.add(sphere);
                         let label = atom.el;
-                        let hasCharge = false;
-                        
                         if (showIonic && atom.role) {
-                            hasCharge = true;
                             label += (atom.role === "cation" ? "+" : "-");
-                            
-                            // Add Cage
-                            const cageColor = atom.role === "cation" ? 0x0088ff : 0xff0044;
-                            const cage = createIonicCage(radius, cageColor);
-                            cage.position.set(atom.x, atom.y, atom.z);
-                            moleculeGroup.add(cage);
+                            const cage = createIonicCage(radius, atom.role === "cation" ? 0x0088ff : 0xff0044);
+                            cage.position.set(atom.x, atom.y, atom.z); moleculeGroup.add(cage);
                         }
-
-                        // Add Label
                         const sprite = createTextSprite(label, '#' + new THREE.Color(color).getHexString());
-                        sprite.position.set(atom.x, atom.y, atom.z);
-                        moleculeGroup.add(sprite);
-                        
-                        // Store for update loop
-                        atomWrappers.current.push({ mesh: sphere, sprite: sprite });
-                        atomMeshes.current.push(sphere);
+                        sprite.position.set(atom.x, atom.y, atom.z); moleculeGroup.add(sprite);
+                        atomWrappers.current.push({ mesh: sphere, sprite: sprite }); atomMeshes.current.push(sphere);
                     });
 
-                    // Create Bonds
                     data.bonds.forEach(bond => {
-                        const source = data.atoms[bond.source];
-                        const target = data.atoms[bond.target];
-                        const start = new THREE.Vector3(source.x, source.y, source.z);
-                        const end = new THREE.Vector3(target.x, target.y, target.z);
-                        const distance = start.distanceTo(end);
-                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                        const s = data.atoms[bond.source], t = data.atoms[bond.target];
+                        const start = new THREE.Vector3(s.x, s.y, s.z), end = new THREE.Vector3(t.x, t.y, t.z);
+                        const dist = start.distanceTo(end), mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
                         
                         if (bond.type === 'ionic') {
                             if (!showIonic) return;
-                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
-                            const lineMat = new THREE.LineDashedMaterial({ 
-                                color: 0xffff00, 
-                                dashSize: 0.2, 
-                                gapSize: 0.1,
-                                scale: 1 
-                            });
-                            const line = new THREE.Line(lineGeo, lineMat);
-                            line.computeLineDistances();
-                            moleculeGroup.add(line);
+                            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), new THREE.LineDashedMaterial({ color: 0xffff00, dashSize: 0.2, gapSize: 0.1, scale: 1 }));
+                            line.computeLineDistances(); moleculeGroup.add(line);
                         } else if (bond.type === 'vdw') {
                             if (!showVDW) return;
-                            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
-                            const lineMat = new THREE.LineDashedMaterial({ 
-                                color: 0x00ffff, 
-                                dashSize: 0.05, 
-                                gapSize: 0.1,
-                                scale: 1,
-                                opacity: 0.5,
-                                transparent: true
-                            });
-                            const line = new THREE.Line(lineGeo, lineMat);
-                            line.computeLineDistances();
-                            moleculeGroup.add(line);
+                            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), new THREE.LineDashedMaterial({ color: 0x00ffff, dashSize: 0.05, gapSize: 0.1, scale: 1, opacity: 0.5, transparent: true }));
+                            line.computeLineDistances(); moleculeGroup.add(line);
                         } else if (showTau && bond.type === 'double') {
-                             // Tau / Bent Bonds
-                             const curveHeight = 0.3;
-                             const createBentBond = (offsetScaler) => {
-                                 const path = new THREE.QuadraticBezierCurve3(
-                                     start,
-                                     new THREE.Vector3(mid.x, mid.y + offsetScaler, mid.z + offsetScaler), // Control point
-                                     end
-                                 );
-                                 const tubeGeo = new THREE.TubeGeometry(path, 8, 0.08, 8, false);
-                                 const tubeMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
-                                 const tube = new THREE.Mesh(tubeGeo, tubeMat);
+                             const curve = (offset) => {
+                                 const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(start, new THREE.Vector3(mid.x, mid.y + offset, mid.z + offset), end), 8, 0.08, 8, false), new THREE.MeshStandardMaterial({ color: 0xaaaaaa }));
                                  moleculeGroup.add(tube);
-                             };
-                             createBentBond(curveHeight);
-                             createBentBond(-curveHeight);
-
+                             }; curve(0.3); curve(-0.3);
                         } else {
-                            // Sigma Bond (Standard)
-                            const direction = new THREE.Vector3().subVectors(end, start);
-                            const orientation = new THREE.Matrix4();
-                            orientation.lookAt(start, end, new THREE.Object3D().up);
-                            orientation.multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2));
-                            
-                            const cylinderGeo = new THREE.CylinderGeometry(0.1, 0.1, distance, 12);
-                            const cylinderMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-                            const cylinder = new THREE.Mesh(cylinderGeo, cylinderMat);
-                            cylinder.applyMatrix4(orientation);
-                            cylinder.position.copy(mid);
-                            moleculeGroup.add(cylinder);
-
-                            // If double bond and NOT Tau, show simplified Pi lines
+                            const orient = new THREE.Matrix4().lookAt(start, end, new THREE.Object3D().up).multiply(new THREE.Matrix4().makeRotationX(Math.PI/2));
+                            const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, dist, 12), new THREE.MeshStandardMaterial({ color: 0x888888 }));
+                            cyl.applyMatrix4(orient); cyl.position.copy(mid); moleculeGroup.add(cyl);
                             if (bond.type === 'double' && !showTau) {
-                                 const cylinder2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, distance, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-                                 cylinder2.applyMatrix4(orientation);
-                                 cylinder2.position.copy(mid);
-                                 cylinder2.position.x += 0.15;
-                                 moleculeGroup.add(cylinder2);
+                                 const cyl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, dist, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+                                 cyl2.applyMatrix4(orient); cyl2.position.copy(mid); cyl2.position.x += 0.15; moleculeGroup.add(cyl2);
                             }
                         }
-
-                        // Pi Orbitals Visualization
                         if (showPi && bond.type === 'double') {
-                            const createLobe = (pos, isUp) => {
-                                const lobeGeo = new THREE.SphereGeometry(0.3, 16, 16);
-                                lobeGeo.scale(0.5, 1, 0.5);
-                                const lobeMat = new THREE.MeshPhongMaterial({ 
-                                    color: isUp ? 0x0000ff : 0xff0000, 
-                                    transparent: true, 
-                                    opacity: 0.4,
-                                    side: THREE.DoubleSide
-                                });
-                                const lobe = new THREE.Mesh(lobeGeo, lobeMat);
-                                // NEW: Removed Z offset +0.2 to center on atom
-                                lobe.position.set(pos.x, pos.y + (isUp ? 0.5 : -0.5), pos.z);
-                                moleculeGroup.add(lobe);
-                            };
-                            createLobe(source, true);
-                            createLobe(source, false);
-                            createLobe(target, true);
-                            createLobe(target, false);
+                            const lobe = (pos, up) => {
+                                const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16).scale(0.5, 1, 0.5), new THREE.MeshPhongMaterial({ color: up ? 0x0000ff : 0xff0000, transparent: true, opacity: 0.4 }));
+                                m.position.set(pos.x, pos.y + (up ? 0.5 : -0.5), pos.z); moleculeGroup.add(m);
+                            }; lobe(s, true); lobe(s, false); lobe(t, true); lobe(t, false);
                         }
                     });
                 };
-
                 renderMolecule();
 
-                // Animation Loop
                 const animate = () => {
-                    animId = requestAnimationFrame(animate);
-                    if (controls) controls.update();
-                    
-                    // Handle text occlusion
-                    if (atomWrappers.current.length > 0) {
-                        const camPos = camera.position;
-                        const dir = new THREE.Vector3();
-                        
+                    animId = requestAnimationFrame(animate); controls.update();
+                    if (atomWrappers.current.length) {
+                        const camPos = camera.position; 
                         atomWrappers.current.forEach(({ mesh, sprite }) => {
-                            dir.subVectors(mesh.position, camPos).normalize();
-                            raycaster.current.set(camPos, dir);
-                            
+                            raycaster.current.set(camPos, new THREE.Vector3().subVectors(mesh.position, camPos).normalize());
                             const intersects = raycaster.current.intersectObjects(atomMeshes.current);
-                            
-                            if (intersects.length > 0) {
-                                if (intersects[0].object === mesh) {
-                                    sprite.visible = true;
-                                } else {
-                                    sprite.visible = false;
-                                }
-                            } else {
-                                sprite.visible = true;
-                            }
+                            sprite.visible = !intersects.length || intersects[0].object === mesh;
                         });
                     }
-
                     renderer.render(scene, camera);
                 };
                 animate();
-
-            } catch (e) {
-                console.error("3D Viewer crashed:", e);
-                setError(e.message);
-            }
-
-            // Cleanup
-            return () => {
-                if (animId) cancelAnimationFrame(animId);
-                if (mountRef.current && renderer) {
-                    mountRef.current.removeChild(renderer.domElement);
-                }
-                if (renderer) renderer.dispose();
-            };
+            } catch (e) { setError(e.message); }
+            return () => { if (mountRef.current && renderer) mountRef.current.removeChild(renderer.domElement); renderer && renderer.dispose(); if(animId) cancelAnimationFrame(animId); };
         }, [selectedMoleculeName, showPi, showTau, showIonic, showVDW]);
 
-        if (error) {
-            return (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 text-white">
-                    <div className="text-center">
-                        <h2 className="text-xl font-bold text-red-500 mb-4">Viewer Error</h2>
-                        <p className="mb-4">{error}</p>
-                        <button onClick={onClose} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600">Close</button>
-                    </div>
-                </div>
-            );
-        }
+        if (error) return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 text-white">{error} <button onClick={onClose} className="ml-4 px-2 py-1 bg-gray-700">Close</button></div>;
 
         return (
             <div className="fixed inset-0 z-[100] flex bg-black/95 backdrop-blur-xl animate-in fade-in duration-300">
-                {/* Sidebar */}
                 <div className="w-80 border-r border-white/10 bg-[#0a0f14] flex flex-col p-6 z-10 shrink-0">
-                    <button onClick={onClose} className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-                        <span className="material-symbols-outlined">arrow_back</span> Back to Portfolio
-                    </button>
-                    
+                    <button onClick={onClose} className="mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined">arrow_back</span> Back</button>
                     <h2 className="text-2xl font-bold text-white mb-2">Molecular<br/><span className="text-primary">Viewer</span></h2>
-                    
-                    <div className="relative mb-6">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
-                        <input 
-                            type="text" 
-                            placeholder="Search chemical..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-primary"
-                        />
-                    </div>
-
+                    <div className="relative mb-6"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span><input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm text-white"/></div>
                     <div className="flex-1 overflow-y-auto molecule-scroll pr-2 space-y-2 mb-6">
                         {moleculeList.map(name => (
-                            <button
-                                key={name}
-                                onClick={() => setSelectedMoleculeName(name)}
-                                className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex justify-between items-center ${selectedMoleculeName === name ? 'bg-primary/20 text-primary border border-primary/50' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-                            >
-                                {name}
-                                {selectedMoleculeName === name && <span className="material-symbols-outlined text-xs">hexagon</span>}
-                            </button>
+                            <button key={name} onClick={() => setSelectedMoleculeName(name)} className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex justify-between ${selectedMoleculeName === name ? 'bg-primary/20 text-primary border border-primary/50' : 'text-slate-400 hover:bg-white/5'}`}>{name} {selectedMoleculeName === name && <span className="material-symbols-outlined text-xs">hexagon</span>}</button>
                         ))}
                     </div>
-
                     <div className="border-t border-white/10 pt-6 space-y-4">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Bond Visualization</h3>
-                        
-                        <label className="flex items-center justify-between cursor-pointer group">
-                            <span className="text-sm text-slate-300 group-hover:text-white">Pi Orbitals</span>
-                            <div onClick={() => setShowPi(!showPi)} className={`w-10 h-5 rounded-full relative transition-colors ${showPi ? 'bg-secondary' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showPi ? 'translate-x-5' : ''}`} />
-                            </div>
-                        </label>
-
-                        <label className="flex items-center justify-between cursor-pointer group">
-                            <span className="text-sm text-slate-300 group-hover:text-white">Tau / Bent Bonds</span>
-                            <div onClick={() => setShowTau(!showTau)} className={`w-10 h-5 rounded-full relative transition-colors ${showTau ? 'bg-primary' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showTau ? 'translate-x-5' : ''}`} />
-                            </div>
-                        </label>
-                        
-                        <label className="flex items-center justify-between cursor-pointer group">
-                            <span className="text-sm text-slate-300 group-hover:text-white">Ionic Bonds</span>
-                            <div onClick={() => setShowIonic(!showIonic)} className={`w-10 h-5 rounded-full relative transition-colors ${showIonic ? 'bg-yellow-500' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showIonic ? 'translate-x-5' : ''}`} />
-                            </div>
-                        </label>
-
-                         <label className="flex items-center justify-between cursor-pointer group">
-                            <span className="text-sm text-slate-300 group-hover:text-white">Van der Waals</span>
-                            <div onClick={() => setShowVDW(!showVDW)} className={`w-10 h-5 rounded-full relative transition-colors ${showVDW ? 'bg-cyan-400' : 'bg-slate-700'}`}>
-                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showVDW ? 'translate-x-5' : ''}`} />
-                            </div>
-                        </label>
+                        <label className="flex items-center justify-between cursor-pointer group"><span className="text-sm text-slate-300">Pi Orbitals</span><div onClick={() => setShowPi(!showPi)} className={`w-10 h-5 rounded-full relative transition-colors ${showPi ? 'bg-secondary' : 'bg-slate-700'}`}><div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showPi ? 'translate-x-5' : ''}`}/></div></label>
+                        <label className="flex items-center justify-between cursor-pointer group"><span className="text-sm text-slate-300">Tau / Bent Bonds</span><div onClick={() => setShowTau(!showTau)} className={`w-10 h-5 rounded-full relative transition-colors ${showTau ? 'bg-primary' : 'bg-slate-700'}`}><div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showTau ? 'translate-x-5' : ''}`}/></div></label>
+                        <label className="flex items-center justify-between cursor-pointer group"><span className="text-sm text-slate-300">Ionic Bonds</span><div onClick={() => setShowIonic(!showIonic)} className={`w-10 h-5 rounded-full relative transition-colors ${showIonic ? 'bg-yellow-500' : 'bg-slate-700'}`}><div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showIonic ? 'translate-x-5' : ''}`}/></div></label>
+                        <label className="flex items-center justify-between cursor-pointer group"><span className="text-sm text-slate-300">Van der Waals</span><div onClick={() => setShowVDW(!showVDW)} className={`w-10 h-5 rounded-full relative transition-colors ${showVDW ? 'bg-cyan-400' : 'bg-slate-700'}`}><div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showVDW ? 'translate-x-5' : ''}`}/></div></label>
                     </div>
                 </div>
-
-                {/* Main 3D View */}
                 <div className="flex-1 relative bg-gradient-to-br from-gray-900 to-black">
                     <div ref={mountRef} className="w-full h-full cursor-move" />
-                    
-                    {/* Top Left Info Panel */}
                     <div className="absolute top-6 left-6 p-4 rounded-xl bg-black/40 backdrop-blur border border-white/10 pointer-events-none z-20">
                          <h2 className="text-2xl font-bold text-white mb-1">{selectedMoleculeName}</h2>
-                         <div className="flex flex-col gap-1 text-sm font-mono text-slate-300">
-                             <div>Formula: <span className="text-primary">{moleculeInfo.formula}</span></div>
-                             <div>Molar Mass: <span className="text-secondary">{moleculeInfo.mass} g/mol</span></div>
-                         </div>
+                         <div className="text-sm font-mono text-slate-300">Formula: <span className="text-primary">{moleculeInfo.formula}</span> | Mass: <span className="text-secondary">{moleculeInfo.mass} g/mol</span></div>
                     </div>
-
-                    {/* Legend */}
                     <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur p-4 rounded-xl border border-white/10 pointer-events-none">
                         <div className="flex gap-4 text-xs font-mono">
                             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-[#333333] border border-white/20"></span> C</div>
@@ -1515,305 +1209,578 @@
         );
       };
 
-      const BlackHoleBackground = ({ progress }) => {
-        const canvasRef = useRef(null);
-        const angleRef = useRef(0);
+      // --- Eclipse Simulation Component (Enhanced with Full Solar System) ---
+      const EclipseSimulation = ({ onClose }) => {
+        const mountRef = useRef(null);
+        
+        // Simulation State
+        const simRef = useRef({ 
+            speed: 1, 
+            mode: 'orbit', 
+            offset: 0, 
+            animId: null,
+            sunTemp: 50,
+            moonDist: 10,
+            prevCoverage: 0
+        });
+        
+        const planetsRef = useRef([]); // Store planet meshes
+
+        const [timeSpeed, setTimeSpeed] = useState(1);
+        const [viewMode, setViewMode] = useState('orbit'); 
+        const [moonOffset, setMoonOffset] = useState(0); 
+        const [sunTemp, setSunTemp] = useState(50);
+        const [moonDist, setMoonDist] = useState(10);
+        const [eclipseStatus, setEclipseStatus] = useState("Not Eclipsed");
+        const [skyDarkness, setSkyDarkness] = useState(0);
+        const [isControlsMinimized, setIsControlsMinimized] = useState(false);
+
+        // Planet Data
+        const PLANET_DATA = useMemo(() => [
+            { name: "Mercury", r: 1.2, dist: 20, color: 0x95a5a6, speed: 2.5, offset: Math.random() * 10 },
+            { name: "Venus", r: 1.6, dist: 32, color: 0xe67e22, speed: 1.8, offset: Math.random() * 10 },
+            // Earth is at 45
+            { name: "Mars", r: 1.4, dist: 60, color: 0xc0392b, speed: 0.8, offset: Math.random() * 10 },
+            { name: "Jupiter", r: 4.5, dist: 90, color: 0xd35400, speed: 0.4, offset: Math.random() * 10 },
+            { name: "Saturn", r: 3.8, dist: 130, color: 0xf1c40f, speed: 0.3, offset: Math.random() * 10, ring: { i: 4.8, o: 7, c: 0x7f8c8d } },
+            { name: "Uranus", r: 2.8, dist: 170, color: 0x1abc9c, speed: 0.2, offset: Math.random() * 10 },
+            { name: "Neptune", r: 2.7, dist: 200, color: 0x2980b9, speed: 0.1, offset: Math.random() * 10 }
+        ], []);
+
+        // Sync State to Ref
+        useEffect(() => {
+            if (simRef.current) {
+                simRef.current.speed = timeSpeed;
+                simRef.current.mode = viewMode;
+                simRef.current.offset = moonOffset;
+                simRef.current.sunTemp = sunTemp;
+                simRef.current.moonDist = moonDist;
+            }
+        }, [timeSpeed, viewMode, moonOffset, sunTemp, moonDist]);
+
+        // Helper: Sun Color Interpolation
+        const getSunColor = (t) => {
+            const stops = [
+                { t: 0, r: 70, g: 0, b: 0 },       // Dark Red
+                { t: 25, r: 255, g: 50, b: 0 },    // Red
+                { t: 40, r: 255, g: 140, b: 0 },   // Orange
+                { t: 60, r: 255, g: 220, b: 0 },   // Yellow
+                { t: 80, r: 255, g: 255, b: 255 }, // White
+                { t: 100, r: 100, g: 180, b: 255 } // Blue
+            ];
+            let s1 = stops[0], s2 = stops[stops.length-1];
+            for(let i=0; i<stops.length-1; i++){
+                if(t >= stops[i].t && t <= stops[i+1].t){
+                    s1 = stops[i]; s2 = stops[i+1]; break;
+                }
+            }
+            const factor = (t - s1.t) / (s2.t - s1.t);
+            const r = s1.r + (s2.r - s1.r) * factor;
+            const g = s1.g + (s2.g - s1.g) * factor;
+            const b = s1.b + (s2.b - s1.b) * factor;
+            return new THREE.Color(`rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`);
+        };
 
         useEffect(() => {
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d');
-          
-          const render = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            const w = canvas.width;
-            const h = canvas.height;
-            const cx = w / 2;
-            const cy = h / 2;
+            if (!mountRef.current || !window.THREE) return;
 
-            ctx.fillStyle = '#020204';
-            ctx.fillRect(0, 0, w, h);
+            // Initial dimensions
+            let width = mountRef.current.clientWidth;
+            let height = mountRef.current.clientHeight;
+            
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            
+            // Camera
+            const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+            camera.position.set(0, 60, 100);
 
-            // Stars
-            for(let i=0; i<150; i++) {
-                const x = (Math.sin(i * 123.456) * 9999) % w;
-                const y = (Math.cos(i * 654.321) * 9999) % h;
-                const size = (Math.sin(i) + 1.5) * 0.8;
-                const opacity = (Math.cos(i) + 1) * 0.3 + 0.1;
-                ctx.fillStyle = `rgba(255,255,255,${Math.abs(opacity)})`;
-                ctx.beginPath();
-                ctx.arc(Math.abs(x), Math.abs(y), size, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            mountRef.current.appendChild(renderer.domElement);
 
-            const p = progress;
-            const merged = p > 0.98;
-            const maxSep = Math.min(w, h) * 0.25;
-            const currentOrbitRadius = merged ? 0 : (maxSep/2) * (1 - p);
-            const rotationSpeed = 0.02 + (Math.pow(p, 3) * 0.15);
-            angleRef.current += rotationSpeed;
-            const angle = angleRef.current;
-
-            ctx.save();
-            ctx.translate(cx, cy);
-
-            if (!merged) {
-                const numRings = 8;
-                const maxRad = Math.max(w, h) * 0.6;
-                const time = Date.now() / 1000;
-                ctx.save();
-                ctx.rotate(angle * 0.2); 
-                for(let i=0; i<numRings; i++) {
-                    const waveBase = (i / numRings);
-                    const waveOffset = (time * (0.1 + p * 0.4)) % 1; 
-                    const waveR = ((waveBase + waveOffset) % 1) * maxRad;
-                    const fade = 1 - (waveR / maxRad);
-                    const intensity = (p * 0.6 + 0.1) * fade;
-                    ctx.strokeStyle = `rgba(100, 100, 255, ${intensity})`;
-                    ctx.lineWidth = 1 + p * 5 * fade;
-                    ctx.beginPath();
-                    ctx.ellipse(0, 0, waveR, waveR * (1 - p * 0.1), angle * -1, 0, Math.PI * 2);
-                    ctx.stroke();
+            // Robust Resize Observer
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const { width, height } = entry.contentRect;
+                    // Only update if dimensions are valid and changed
+                    if (width > 0 && height > 0) {
+                        renderer.setSize(width, height);
+                        camera.aspect = width / height;
+                        camera.updateProjectionMatrix();
+                    }
                 }
-                ctx.restore();
-            } else {
-                const shockTime = (Date.now() / 20) % 200;
-                ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * (1 - shockTime/200)})`;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, 0, shockTime * 5, 0, Math.PI * 2);
-                ctx.stroke();
+            });
+            resizeObserver.observe(mountRef.current);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enablePan = true;
+            controls.enableDamping = true;
+            controls.screenSpacePanning = true; // Better for navigating solar system plane
+            controls.maxDistance = 800;
+
+            // --- Starfield ---
+            // Subtle stars for when eclipse happens
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 3000;
+            const starPos = new Float32Array(starCount * 3);
+            for(let i=0; i<starCount*3; i++) {
+                const r = 900 + Math.random() * 400; // Push stars far back
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                starPos[i] = r * Math.sin(phi) * Math.cos(theta);
+                starPos[i+1] = r * Math.sin(phi) * Math.sin(theta);
+                starPos[i+2] = r * Math.cos(phi);
             }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 1.5, transparent: true, opacity: 1}));
+            scene.add(stars);
 
-            const drawSingleBH = (x, y, r, color, isMergedEntity) => {
-                const diskRadius = r * (isMergedEntity ? 5 : 3);
-                const grad = ctx.createRadialGradient(x, y, r * 0.8, x, y, diskRadius);
-                grad.addColorStop(0, '#000'); 
-                grad.addColorStop(0.2, color); 
-                grad.addColorStop(1, 'transparent'); 
+            // --- Solar System ---
+            const sunGeo = new THREE.SphereGeometry(6, 64, 64);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+            const sun = new THREE.Mesh(sunGeo, sunMat);
+            scene.add(sun);
 
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(x, y, diskRadius, 0, Math.PI * 2);
-                ctx.fill();
+            const sunLight = new THREE.PointLight(0xffffff, 2, 800);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.1;
+            sunLight.shadow.camera.far = 500;
+            sunLight.shadow.bias = -0.0001; // Reduce shadow acne
+            scene.add(sunLight);
+
+            // Sun Glow
+            const glowCanvas = document.createElement('canvas');
+            glowCanvas.width = 128; glowCanvas.height = 128;
+            const ctx = glowCanvas.getContext('2d');
+            // Clear rect to ensure full transparency base
+            ctx.clearRect(0,0,128,128);
+            const grad = ctx.createRadialGradient(64,64,0,64,64,64);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad; 
+            ctx.fillRect(0,0,128,128);
+            
+            const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                map: new THREE.CanvasTexture(glowCanvas), 
+                color: 0xffdd00, 
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            }));
+            sunGlow.scale.set(30, 30, 1);
+            sun.add(sunGlow);
+
+            // Add Planets
+            planetsRef.current = [];
+            PLANET_DATA.forEach(data => {
+                const geo = new THREE.SphereGeometry(data.r, 32, 32);
+                const mat = new THREE.MeshPhongMaterial({ color: data.color, shininess: 10 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
                 
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = isMergedEntity ? 4 : 2;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = isMergedEntity ? 30 : 15;
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.shadowBlur = 0;
+                if (data.ring) {
+                    const ringGeo = new THREE.RingGeometry(data.ring.i, data.ring.o, 64);
+                    const ringMat = new THREE.MeshBasicMaterial({ 
+                        color: data.ring.c, 
+                        side: THREE.DoubleSide, 
+                        transparent: true, 
+                        opacity: 0.6 
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    mesh.add(ring);
+                }
+                
+                scene.add(mesh);
+                planetsRef.current.push({ mesh, data });
+            });
 
-                ctx.fillStyle = '#000';
-                ctx.beginPath();
-                ctx.arc(x, y, r * 0.95, 0, Math.PI * 2);
-                ctx.fill();
+            // Earth
+            const earthR = 1.8;
+            const earthDist = 45;
+            const earthGeo = new THREE.SphereGeometry(earthR, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({ 
+                color: 0x2233ff,
+                emissive: 0x000022,
+                specular: 0x111111,
+                shininess: 10
+            });
+            const earth = new THREE.Mesh(earthGeo, earthMat);
+            earth.castShadow = true;
+            earth.receiveShadow = true;
+            
+            const earthGroup = new THREE.Group();
+            earthGroup.add(earth);
+            scene.add(earthGroup);
+
+            // Moon
+            const moonPivot = new THREE.Group();
+            earth.add(moonPivot);
+            
+            const moonGeo = new THREE.SphereGeometry(0.5, 64, 64);
+            const moonMat = new THREE.MeshPhongMaterial({ color: 0x555555, shininess: 0 });
+            const moon = new THREE.Mesh(moonGeo, moonMat);
+            moon.castShadow = true;
+            moon.receiveShadow = true;
+            moonPivot.add(moon);
+
+            // Atmosphere (The "Clear Sky" Background)
+            const atmosGeo = new THREE.SphereGeometry(400, 32, 32);
+            const atmosMat = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide, transparent: true, opacity: 0.8, depthWrite: false });
+            const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
+            scene.add(atmosphere);
+
+            // --- Animation Loop ---
+            let time = 0;
+            const loop = () => {
+                const animId = requestAnimationFrame(loop);
+                if (!simRef.current) return;
+                
+                simRef.current.animId = animId;
+                const speed = simRef.current.speed;
+                const mode = simRef.current.mode;
+                const offset = simRef.current.offset;
+                const currentSunTemp = simRef.current.sunTemp;
+                const currentMoonDist = simRef.current.moonDist;
+
+                time += 0.005 * speed;
+
+                // Update Sun Color
+                const sunC = getSunColor(currentSunTemp);
+                sunMat.color.copy(sunC);
+                sunLight.color.copy(sunC);
+                sunGlow.material.color.copy(sunC);
+
+                // Update Planets
+                planetsRef.current.forEach(p => {
+                    const angle = time * p.data.speed + p.data.offset;
+                    p.mesh.position.x = Math.cos(angle) * p.data.dist;
+                    p.mesh.position.z = Math.sin(angle) * p.data.dist;
+                    // Axial rotation depends on speed now
+                    p.mesh.rotation.y += 0.01 * speed;
+                });
+
+                // Update Earth Orbit
+                earthGroup.position.x = Math.cos(time) * earthDist;
+                earthGroup.position.z = Math.sin(time) * earthDist;
+                // Axial rotation depends on speed now
+                earth.rotation.y += 0.01 * speed;
+
+                // Update Moon
+                // Moon orbital speed depends on time (which depends on speed)
+                const moonSpeed = time * 12;
+                moonPivot.rotation.y = moonSpeed;
+                moon.position.set(currentMoonDist, Math.sin(moonSpeed) * offset, 0);
+
+                // --- Eclipse Calculation (Ground View Logic) ---
+                const earthPos = new THREE.Vector3();
+                earth.getWorldPosition(earthPos);
+                
+                const sunPos = new THREE.Vector3(0,0,0);
+                const moonPos = new THREE.Vector3();
+                moon.getWorldPosition(moonPos);
+
+                const earthToSun = new THREE.Vector3().subVectors(sunPos, earthPos).normalize();
+                
+                // Camera on surface facing sun
+                const surfacePos = earthPos.clone().add(earthToSun.clone().multiplyScalar(earthR + 0.1));
+                
+                // Check eclipse coverage
+                const viewToSun = new THREE.Vector3().subVectors(sunPos, surfacePos);
+                const distToSun = viewToSun.length();
+                viewToSun.normalize();
+
+                const viewToMoon = new THREE.Vector3().subVectors(moonPos, surfacePos);
+                const distToMoon = viewToMoon.length();
+                viewToMoon.normalize();
+
+                const sunAngRad = Math.atan(6 / distToSun);
+                const moonAngRad = Math.atan(0.5 / distToMoon);
+                const separationAngle = viewToSun.angleTo(viewToMoon);
+                
+                let coverage = 0;
+                const totalRad = sunAngRad + moonAngRad;
+                
+                if (separationAngle < totalRad) {
+                     if (separationAngle <= Math.abs(sunAngRad - moonAngRad)) {
+                         coverage = moonAngRad >= sunAngRad ? 1.0 : (moonAngRad*moonAngRad)/(sunAngRad*sunAngRad);
+                     } else {
+                         coverage = 1.0 - (separationAngle / totalRad); 
+                     }
+                }
+                
+                // Status Logic
+                let status = "Not Eclipsed";
+                const prev = simRef.current.prevCoverage;
+                if (coverage > 0) {
+                    if (coverage >= 0.98) status = "TOTAL ECLIPSE";
+                    else if (coverage > prev) status = "Approaching Eclipse";
+                    else status = "Departing Eclipse";
+                }
+                simRef.current.prevCoverage = coverage;
+                
+                // Lighting & Atmosphere
+                const darkness = Math.min(1, coverage * 1.5);
+                
+                if (mode === 'earth') {
+                    camera.position.copy(surfacePos);
+                    camera.lookAt(sunPos);
+                    
+                    atmosphere.position.copy(surfacePos);
+                    
+                    // Sky Color Logic
+                    // Base sky is a mix of Sun color and Blue
+                    // Sun Red -> Sky Pink/Orange
+                    // Sun Blue -> Sky Deep Blue
+                    const skyBase = sunC.clone().lerp(new THREE.Color(0x87CEEB), 0.6);
+                    
+                    // As eclipse happens, sky gets dark
+                    const finalSky = skyBase.clone().multiplyScalar(1 - darkness);
+                    atmosphere.material.color.copy(finalSky);
+                    
+                    // Opacity drops to reveal stars only when VERY dark
+                    atmosphere.material.opacity = Math.max(0.1, 1 - darkness * 1.2);
+                    
+                    sunLight.intensity = 2 * (1 - darkness);
+                    ambient.intensity = 0.5 * (1 - darkness);
+                } else {
+                    controls.update();
+                    atmosphere.material.opacity = 0; // Hide atmosphere in orbit
+                    sunLight.intensity = 2;
+                    ambient.intensity = 0.5;
+                }
+                
+                // React UI Updates
+                if (Math.random() < 0.1) { 
+                   setEclipseStatus(status);
+                   setSkyDarkness(coverage);
+                }
+                
+                renderer.render(scene, camera);
             };
+            
+            const ambient = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambient);
+            
+            loop();
 
-            const baseRadius = 20;
-
-            if (merged) {
-                const shake = (Math.random() - 0.5) * 3;
-                drawSingleBH(shake, shake, baseRadius * 1.6, 'rgba(150, 200, 255, 0.9)', true);
-                
-                ctx.save();
-                ctx.rotate(Math.PI / 4);
-                ctx.strokeStyle = 'rgba(6, 188, 249, 0.4)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(0, -baseRadius * 2);
-                ctx.lineTo(0, -baseRadius * 20 - Math.random()*50);
-                ctx.moveTo(0, baseRadius * 2);
-                ctx.lineTo(0, baseRadius * 20 + Math.random()*50);
-                ctx.stroke();
-                ctx.restore();
-
-            } else {
-                const x1 = Math.cos(angle) * currentOrbitRadius;
-                const y1 = Math.sin(angle) * currentOrbitRadius;
-                const x2 = Math.cos(angle + Math.PI) * currentOrbitRadius;
-                const y2 = Math.sin(angle + Math.PI) * currentOrbitRadius;
-
-                drawSingleBH(x1, y1, baseRadius, 'rgba(6, 188, 249, 0.8)', false);
-                drawSingleBH(x2, y2, baseRadius, 'rgba(168, 85, 247, 0.8)', false);
-
-                if (p > 0.5) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(x1 * 0.8, y1 * 0.8);
-                    const cpX = (Math.random()-0.5) * 10;
-                    const cpY = (Math.random()-0.5) * 10;
-                    ctx.quadraticCurveTo(cpX, cpY, x2 * 0.8, y2 * 0.8);
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${p * 0.8})`;
-                    ctx.lineWidth = p * 6;
-                    ctx.lineCap = 'round';
-                    ctx.stroke();
-                    ctx.restore();
+            return () => {
+                cancelAnimationFrame(simRef.current.animId);
+                resizeObserver.disconnect(); // Cleanup observer
+                if (mountRef.current && renderer) {
+                    mountRef.current.removeChild(renderer.domElement);
                 }
-            }
+                renderer.dispose();
+            };
+        }, [PLANET_DATA]); // Add PLANET_DATA to dependency
 
+        return (
+            <div className="fixed inset-0 z-[100] bg-black/95 animate-in fade-in duration-300 font-display">
+                <div ref={mountRef} className="absolute inset-0 z-0 block w-full h-full" />
+                
+                {/* HUD */}
+                <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none z-10 transition-opacity duration-300" style={{opacity: isControlsMinimized ? 0 : 1}}>
+                    <h1 className={`text-4xl font-black tracking-tighter transition-colors duration-500 ${skyDarkness > 0.9 ? 'text-secondary animate-pulse' : 'text-white'}`}>
+                        {eclipseStatus}
+                    </h1>
+                    <div className="text-sm font-mono text-slate-400 mt-2 bg-black/50 px-3 py-1 rounded">
+                        Obscuration: {(skyDarkness * 100).toFixed(1)}%
+                    </div>
+                </div>
+
+                {/* Minimized Toggle Button */}
+                <button 
+                    onClick={() => setIsControlsMinimized(!isControlsMinimized)}
+                    className="absolute bottom-8 right-8 z-30 bg-surface-dark/90 backdrop-blur border border-white/10 p-3 rounded-full text-white hover:text-primary hover:border-primary transition-all shadow-lg hover:shadow-neon"
+                >
+                    <span className="material-symbols-outlined">{isControlsMinimized ? 'tune' : 'expand_more'}</span>
+                </button>
+
+                {/* Controls UI */}
+                <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl bg-surface-dark/90 backdrop-blur-xl rounded-2xl border border-white/10 z-20 flex flex-col shadow-2xl transition-all duration-300 overflow-hidden ${isControlsMinimized ? 'h-0 opacity-0 p-0 pointer-events-none' : 'p-6 opacity-100'}`}>
+                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary">solar_power</span>
+                            <h2 className="text-xl font-bold text-white">System <span className="text-primary">Control</span></h2>
+                        </div>
+                        <button onClick={onClose} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm px-3 py-1 rounded hover:bg-white/5 transition-colors">
+                            <span className="material-symbols-outlined">close</span> Terminate
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+                        {/* Column 1 */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Orbital Mechanics</h3>
+                            
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-slate-300">
+                                    <span>Time Dilation (Speed)</span>
+                                    <span className="font-mono text-primary">{timeSpeed.toFixed(1)}x</span>
+                                </div>
+                                <input type="range" min="0" max="5" step="0.1" value={timeSpeed} onChange={(e) => setTimeSpeed(parseFloat(e.target.value))} className="range-slider"/>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-slate-300">
+                                    <span>Moon Distance</span>
+                                    <span className="font-mono text-primary">{moonDist} units</span>
+                                </div>
+                                <input type="range" min="5" max="20" step="0.5" value={moonDist} onChange={(e) => setMoonDist(parseFloat(e.target.value))} className="range-slider"/>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-slate-300">
+                                    <span>Orbital Inclination</span>
+                                    <span className="font-mono text-primary">{moonOffset === 0 ? 'Aligned' : 'Offset'}</span>
+                                </div>
+                                <input type="range" min="-3" max="3" step="0.1" value={moonOffset} onChange={(e) => setMoonOffset(parseFloat(e.target.value))} className="range-slider"/>
+                            </div>
+                        </div>
+
+                        {/* Column 2 */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Stellar Physics</h3>
+                            
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs text-slate-300">
+                                    <span>Photosphere Temperature</span>
+                                    <span className="font-mono text-primary">{Math.round(2000 + sunTemp * 100)}K</span>
+                                </div>
+                                <div className="h-1 w-full rounded-full temp-slider mb-2"></div>
+                                <input type="range" min="0" max="100" value={sunTemp} onChange={(e) => setSunTemp(parseFloat(e.target.value))} className="range-slider"/>
+                            </div>
+
+                            <div className="bg-black/40 p-3 rounded-lg border border-white/5 mt-4">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">Telemetry</h4>
+                                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-300">
+                                    <div>View: <span className="text-white">{viewMode === 'orbit' ? 'Heliospheric' : 'Surface'}</span></div>
+                                    <div>Status: <span className={eclipseStatus === 'TOTAL ECLIPSE' ? 'text-red-500 animate-pulse' : 'text-green-500'}>{eclipseStatus}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center pt-2 border-t border-white/10 mt-2">
+                        <div className="bg-black/40 p-1 rounded-lg flex gap-1">
+                            <button onClick={() => setViewMode('orbit')} className={`px-6 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'orbit' ? 'bg-primary text-black shadow-neon' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                                Orbit View
+                            </button>
+                            <button onClick={() => setViewMode('earth')} className={`px-6 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'earth' ? 'bg-primary text-black shadow-neon' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                                View from Ground
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+      };
+
+      // --- Contact Component ---
+      const Contact = () => {
+        return (
+           <section id="contact" className="py-32 px-4 sm:px-6 relative overflow-hidden bg-void">
+            <ShootingStars />
+            <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-secondary/50 to-transparent"></div>
+            <div className="mx-auto max-w-2xl text-center relative z-10">
+              <h2 className="text-4xl font-black text-white mb-6 sm:text-6xl tracking-tighter">Signal Received?</h2>
+              <p className="text-lg text-slate-400 mb-12 font-light">Ready to collaborate on the next frontier of web design? <br className="hidden sm:block"/> My frequency is open for new opportunities.</p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                <a href="mailto:nguyennhathanhhuy@gmail.com" className="flex items-center justify-center gap-3 bg-[#0a0f14]/80 backdrop-blur border border-slate-800 hover:border-secondary text-white px-8 py-4 rounded-lg transition-all group shadow-lg hover:shadow-neon-purple"><span className="material-symbols-outlined text-secondary group-hover:animate-pulse">mail</span><span className="font-medium tracking-wide">nguyennhathanhhuy@gmail.com</span></a>
+                <div className="flex gap-4 justify-center items-center">{['GitHub', 'LinkedIn'].map((platform) => (<a key={platform} href="#" className={`h-14 w-14 flex items-center justify-center rounded-lg bg-[#0a0f14]/80 backdrop-blur border border-slate-800 text-slate-400 hover:text-white hover:border-${platform === 'GitHub' ? 'primary' : 'secondary'} hover:shadow-${platform === 'GitHub' ? 'neon' : 'neon-purple'} transition-all`} aria-label={platform}><span className="material-symbols-outlined">{platform === 'GitHub' ? 'code_blocks' : 'person_search'}</span></a>))}</div>
+              </div>
+            </div>
+          </section>
+        );
+      };
+
+      // --- Black Hole Background ---
+      const BlackHoleBackground = ({ progress }) => {
+        const canvasRef = useRef(null); const angleRef = useRef(0);
+        useEffect(() => {
+          const canvas = canvasRef.current; const ctx = canvas.getContext('2d');
+          const render = () => {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const w = canvas.width; const h = canvas.height; const cx = w / 2; const cy = h / 2;
+            ctx.fillStyle = '#020204'; ctx.fillRect(0, 0, w, h);
+            for(let i=0; i<150; i++) {
+                const x = (Math.sin(i * 123.456) * 9999) % w; const y = (Math.cos(i * 654.321) * 9999) % h;
+                const size = (Math.sin(i) + 1.5) * 0.8; const opacity = (Math.cos(i) + 1) * 0.3 + 0.1;
+                ctx.fillStyle = `rgba(255,255,255,${Math.abs(opacity)})`; ctx.beginPath(); ctx.arc(Math.abs(x), Math.abs(y), size, 0, Math.PI * 2); ctx.fill();
+            }
+            const p = progress; const merged = p > 0.98; const maxSep = Math.min(w, h) * 0.25;
+            const currentOrbitRadius = merged ? 0 : (maxSep/2) * (1 - p);
+            angleRef.current += 0.02 + (Math.pow(p, 3) * 0.15); const angle = angleRef.current;
+            ctx.save(); ctx.translate(cx, cy);
+            if (!merged) {
+                ctx.save(); ctx.rotate(angle * 0.2); 
+                for(let i=0; i<8; i++) {
+                    const waveR = ((i/8 + Date.now()/10000 * (0.1+p*0.4)) % 1) * Math.max(w,h)*0.6;
+                    ctx.strokeStyle = `rgba(100, 100, 255, ${(p * 0.6 + 0.1) * (1 - waveR/Math.max(w,h))})`;
+                    ctx.lineWidth = 1 + p * 5; ctx.beginPath(); ctx.ellipse(0, 0, waveR, waveR * (1 - p * 0.1), -angle, 0, Math.PI * 2); ctx.stroke();
+                }
+                ctx.restore();
+            }
+            const drawBH = (x, y, r, c) => {
+                const grad = ctx.createRadialGradient(x, y, r * 0.8, x, y, r * 3); grad.addColorStop(0, '#000'); grad.addColorStop(0.2, c); grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(x, y, r * 3, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x, y, r * 0.95, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.shadowColor = c; ctx.shadowBlur = 15; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+            };
+            if(merged) drawBH(0,0,32,'rgba(150, 200, 255, 0.9)');
+            else {
+                drawBH(Math.cos(angle)*currentOrbitRadius, Math.sin(angle)*currentOrbitRadius, 20, 'rgba(6, 188, 249, 0.8)');
+                drawBH(Math.cos(angle+Math.PI)*currentOrbitRadius, Math.sin(angle+Math.PI)*currentOrbitRadius, 20, 'rgba(168, 85, 247, 0.8)');
+            }
             ctx.restore();
           };
-
-          const animId = requestAnimationFrame(function loop() {
-              render();
-              requestAnimationFrame(loop);
-          });
-
-          const handleResize = () => render();
-          window.addEventListener('resize', handleResize);
-
-          return () => {
-            window.removeEventListener('resize', handleResize);
-            cancelAnimationFrame(animId);
-          };
+          const animId = requestAnimationFrame(function loop() { render(); requestAnimationFrame(loop); });
+          return () => cancelAnimationFrame(animId);
         }, [progress]);
-
         return <canvas ref={canvasRef} className="absolute inset-0 z-0 h-full w-full object-cover" />;
       };
 
       const Navbar = () => {
         const [isOpen, setIsOpen] = useState(false);
         const [scrolled, setScrolled] = useState(false);
-
-        useEffect(() => {
-          const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-          };
-          window.addEventListener('scroll', handleScroll);
-          return () => window.removeEventListener('scroll', handleScroll);
-        }, []);
-
+        useEffect(() => { const h = () => setScrolled(window.scrollY > 20); window.addEventListener('scroll', h); return () => window.removeEventListener('scroll', h); }, []);
         return (
           <nav className={`fixed top-0 z-50 w-full border-b transition-colors duration-300 ${scrolled ? 'border-white/5 bg-background-dark/90 backdrop-blur-md' : 'border-transparent bg-transparent'}`}>
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-              <div className="flex items-center gap-4">
-                <div 
-                  className="h-10 w-10 rounded-full bg-cover bg-center ring-2 ring-primary/50 shadow-neon"
-                  style={{ backgroundImage: `url('${PROFILE_AVATAR}')` }}
-                  aria-label="Portrait of Thanh Huy"
-                />
-                <span className="text-lg font-bold tracking-tight text-white hidden sm:block">Thanh Huy</span>
-              </div>
-              
-              <div className="hidden md:flex items-center gap-8">
-                {NAV_ITEMS.map((item) => (
-                  <a 
-                    key={item.label} 
-                    href={item.href} 
-                    className="text-sm font-medium text-slate-300 hover:text-primary transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-
-              <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden p-2 text-slate-300 hover:text-white"
-              >
-                <span className="material-symbols-outlined">{isOpen ? 'close' : 'menu'}</span>
-              </button>
+              <div className="flex items-center gap-4"><div className="h-10 w-10 rounded-full bg-cover bg-center ring-2 ring-primary/50 shadow-neon" style={{ backgroundImage: `url('${PROFILE_AVATAR}')` }}/><span className="text-lg font-bold tracking-tight text-white hidden sm:block">Thanh Huy</span></div>
+              <div className="hidden md:flex items-center gap-8">{NAV_ITEMS.map((item) => (<a key={item.label} href={item.href} className="text-sm font-medium text-slate-300 hover:text-primary transition-colors">{item.label}</a>))}</div>
+              <button onClick={() => setIsOpen(!isOpen)} className="md:hidden p-2 text-slate-300 hover:text-white"><span className="material-symbols-outlined">{isOpen ? 'close' : 'menu'}</span></button>
             </div>
-
-            {/* Mobile Menu */}
-            {isOpen && (
-              <div className="md:hidden absolute top-16 left-0 w-full bg-background-dark/95 border-b border-white/5 backdrop-blur-md py-4">
-                <div className="flex flex-col items-center gap-4">
-                  {NAV_ITEMS.map((item) => (
-                    <a 
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className="text-base font-medium text-slate-300 hover:text-primary transition-colors"
-                    >
-                      {item.label}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+            {isOpen && (<div className="md:hidden absolute top-16 left-0 w-full bg-background-dark/95 border-b border-white/5 backdrop-blur-md py-4"><div className="flex flex-col items-center gap-4">{NAV_ITEMS.map((item) => (<a key={item.label} href={item.href} onClick={() => setIsOpen(false)} className="text-base font-medium text-slate-300 hover:text-primary transition-colors">{item.label}</a>))}</div></div>)}
           </nav>
         );
       };
 
       const Hero = () => {
-        const [timeData, setTimeData] = useState(100); // Start merged (100)
-        const [isControlOpen, setIsControlOpen] = useState(true);
-
+        const [timeData, setTimeData] = useState(100); const [isControlOpen, setIsControlOpen] = useState(true);
         return (
           <section id="home" className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-4 sm:px-6 bg-[#020204]">
-            
-            {/* Background Simulation */}
             <BlackHoleBackground progress={timeData / 100} />
-
-            {/* Content Gradient Overlay to ensure text readability */}
             <div className="absolute inset-0 z-0 bg-gradient-to-t from-background-dark via-transparent to-background-dark/50 pointer-events-none"></div>
-
             <div className="relative z-10 mx-auto max-w-5xl text-center mt-10 pointer-events-none">
               <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-primary/80">2026 Portfolio</p>
-              <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-7xl lg:text-8xl drop-shadow-2xl">
-                Atomizing the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-cyan-300 to-white">Celestial</span> <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary via-purple-400 to-white">Bodies</span>
-              </h1>
-              <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-slate-300 sm:text-xl drop-shadow-md">
-                I'm <span className="text-white font-medium">Thanh Huy</span>. I am a student who is dedicated to <GradientText>chemistry and astronomy</GradientText>. I use my coding skills to create digital experiences.
-              </p>
+              <h1 className="mb-6 text-5xl font-black leading-tight tracking-tight text-white sm:text-7xl lg:text-8xl drop-shadow-2xl">Atomizing the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-cyan-300 to-white">Celestial</span> <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary via-purple-400 to-white">Bodies</span></h1>
+              <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-slate-300 sm:text-xl drop-shadow-md">I'm <span className="text-white font-medium">Thanh Huy</span>. I am a student who is dedicated to <GradientText>chemistry and astronomy</GradientText>. I use my coding skills to create digital experiences.</p>
             </div>
-              
             <div className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a href="#projects" className="group relative flex h-12 items-center justify-center overflow-hidden rounded-full bg-primary px-8 text-sm font-bold text-[#020204] transition-all hover:bg-cyan-300 hover:shadow-neon">
-                <span className="relative z-10 mr-2">Explore Universe</span>
-                <span className="material-symbols-outlined relative z-10 text-[20px] transition-transform group-hover:translate-x-1">rocket_launch</span>
-              </a>
-              <a href="#contact" className="flex h-12 items-center justify-center rounded-full border border-slate-700 px-8 text-sm font-bold text-white transition-colors hover:border-secondary hover:text-secondary hover:shadow-neon-purple bg-surface-dark/50 backdrop-blur-sm">
-                Contact Me
-              </a>
+              <a href="#projects" className="group relative flex h-12 items-center justify-center overflow-hidden rounded-full bg-primary px-8 text-sm font-bold text-[#020204] transition-all hover:bg-cyan-300 hover:shadow-neon"><span className="relative z-10 mr-2">Explore Universe</span><span className="material-symbols-outlined relative z-10 text-[20px] transition-transform group-hover:translate-x-1">rocket_launch</span></a>
+              <a href="#contact" className="flex h-12 items-center justify-center rounded-full border border-slate-700 px-8 text-sm font-bold text-white transition-colors hover:border-secondary hover:text-secondary hover:shadow-neon-purple bg-surface-dark/50 backdrop-blur-sm">Contact Me</a>
             </div>
-
-            {/* Minimizable Time Control Bar */}
             <div className="absolute bottom-10 left-0 right-0 mx-auto w-full max-w-md z-30 px-6 flex justify-center">
-                {isControlOpen ? (
-                  <div className="w-full bg-surface-dark/60 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className="flex justify-between items-center mb-3">
-                          <div className="flex justify-between text-[10px] text-primary uppercase font-mono tracking-widest gap-4">
-                              <span>Binary System</span>
-                              <span>Singularity</span>
-                          </div>
-                          <button 
-                            onClick={() => setIsControlOpen(false)}
-                            className="text-slate-400 hover:text-white transition-colors"
-                            title="Minimize Controls"
-                          >
-                            <span className="material-symbols-outlined text-sm">remove</span>
-                          </button>
-                      </div>
-                      <input 
-                          type="range" 
-                          min="0" 
-                          max="100" 
-                          value={timeData} 
-                          onChange={(e) => setTimeData(Number(e.target.value))}
-                          className="range-slider"
-                      />
-                      <div className="flex justify-between items-center mt-2">
-                           <span className="text-[10px] text-slate-400 font-mono">T-Minus: {(100 - timeData).toFixed(0)} units</span>
-                           <span className={`text-[10px] font-mono transition-colors ${timeData > 95 ? 'text-red-500 animate-pulse font-bold' : 'text-slate-500'}`}>
-                              {timeData > 95 ? 'CRITICAL: MERGER IMMINENT' : 'STATUS: STABLE ORBIT'}
-                           </span>
-                      </div>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => setIsControlOpen(true)}
-                    className="flex items-center gap-2 bg-surface-dark/40 backdrop-blur-sm border border-white/10 hover:border-primary/50 text-slate-300 hover:text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-neon"
-                  >
-                    <span className="material-symbols-outlined text-sm">tune</span>
-                    <span className="text-xs font-bold uppercase tracking-wider">Initialize Controls</span>
-                  </button>
-                )}
+                {isControlOpen ? (<div className="w-full bg-surface-dark/60 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500"><div className="flex justify-between items-center mb-3"><div className="flex justify-between text-[10px] text-primary uppercase font-mono tracking-widest gap-4"><span>Binary System</span><span>Singularity</span></div><button onClick={() => setIsControlOpen(false)} className="text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined text-sm">remove</span></button></div><input type="range" min="0" max="100" value={timeData} onChange={(e) => setTimeData(Number(e.target.value))} className="range-slider"/><div className="flex justify-between items-center mt-2"><span className="text-[10px] text-slate-400 font-mono">T-Minus: {(100 - timeData).toFixed(0)} units</span><span className={`text-[10px] font-mono transition-colors ${timeData > 95 ? 'text-red-500 animate-pulse font-bold' : 'text-slate-500'}`}>{timeData > 95 ? 'CRITICAL: MERGER IMMINENT' : 'STATUS: STABLE ORBIT'}</span></div></div>) : (<button onClick={() => setIsControlOpen(true)} className="flex items-center gap-2 bg-surface-dark/40 backdrop-blur-sm border border-white/10 hover:border-primary/50 text-slate-300 hover:text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-neon"><span className="material-symbols-outlined text-sm">tune</span><span className="text-xs font-bold uppercase tracking-wider">Initialize Controls</span></button>)}
             </div>
           </section>
         );
@@ -1825,62 +1792,13 @@
             <div className="absolute inset-0 z-0 bg-stars opacity-40"></div>
             <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-secondary/20 blur-[130px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[700px] h-[700px] bg-primary/10 blur-[130px] rounded-full pointer-events-none"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-900/10 blur-[150px] rounded-full pointer-events-none"></div>
-
             <div className="relative z-10 mx-auto max-w-6xl">
-              <div className="flex items-end justify-between mb-16 border-b border-white/10 pb-6">
-                <div>
-                  <span className="text-secondary font-mono text-sm tracking-widest mb-2 block">SELECTED WORKS</span>
-                  <h2 className="text-3xl font-bold text-white sm:text-4xl">Exploration Log</h2>
-                </div>
-                <a href="#" className="hidden sm:flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-secondary transition-colors">
-                  Full Archive <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </a>
-              </div>
-
+              <div className="flex items-end justify-between mb-16 border-b border-white/10 pb-6"><div><span className="text-secondary font-mono text-sm tracking-widest mb-2 block">SELECTED WORKS</span><h2 className="text-3xl font-bold text-white sm:text-4xl">Exploration Log</h2></div><a href="#" className="hidden sm:flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-secondary transition-colors">Full Archive <span className="material-symbols-outlined text-[16px]">arrow_forward</span></a></div>
               <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
                 {PROJECTS.map((project, idx) => (
-                  <div 
-                    key={idx} 
-                    onClick={() => {
-                        if (project.id === 'molecular') {
-                            onOpenProject(project.id);
-                        } else if (project.id === 'eclipse') {
-                            onOpenProject(project.id);
-                        } else {
-                            // Feedback for unimplemented projects
-                            alert("Access Denied: Classified Information. \n(This project link is a placeholder for the demo)");
-                        }
-                    }}
-                    className={`group relative cursor-pointer overflow-hidden rounded-xl bg-[#0a0f14] border border-white/5 transition-all duration-300 hover:-translate-y-2 hover:border-${project.color === 'primary' ? 'primary' : 'secondary'}/50 hover:shadow-neon${project.color !== 'primary' ? '-purple' : ''}`}
-                  >
-                    <div className="aspect-[4/3] w-full overflow-hidden relative">
-                      <div 
-                        className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                        style={{ 
-                          backgroundImage: `url('${project.image}')`,
-                          filter: project.title.includes('Curiosity') ? 'contrast(1.2) hue-rotate(220deg) saturate(0.8)' : 
-                                  project.title.includes('Molecular') ? 'grayscale(100%) brightness(0.8) contrast(1.2)' : 
-                                  project.title.includes('Eclipse') ? 'grayscale(100%) brightness(0.7) sepia(0.3)' : 
-                                  'hue-rotate(45deg) contrast(1.1)' 
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f14] via-transparent to-transparent opacity-90"></div>
-                      </div>
-                      <div className={`absolute top-4 right-4 bg-${project.color === 'primary' ? 'primary' : 'purple-500'}/20 backdrop-blur-md border border-${project.color === 'primary' ? 'primary' : 'purple-500'}/30 text-${project.color === 'primary' ? 'primary' : 'purple-300'} text-xs font-bold px-3 py-1 rounded-full`}>
-                        {project.category}
-                      </div>
-                    </div>
-                    
-                    <div className="absolute bottom-0 left-0 w-full p-6">
-                      <h3 className={`text-xl font-bold text-white group-hover:text-${project.color} transition-colors`}>{project.title}</h3>
-                      <p className="mt-2 text-sm text-slate-400 line-clamp-2">{project.description}</p>
-                      <div className="mt-4 flex gap-2">
-                        {project.tags.map(tag => (
-                          <span key={tag} className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{tag}</span>
-                        ))}
-                      </div>
-                    </div>
+                  <div key={idx} onClick={() => onOpenProject(project.id)} className={`group relative cursor-pointer overflow-hidden rounded-xl bg-[#0a0f14] border border-white/5 transition-all duration-300 hover:-translate-y-2 hover:border-${project.color === 'primary' ? 'primary' : 'secondary'}/50 hover:shadow-neon${project.color !== 'primary' ? '-purple' : ''}`}>
+                    <div className="aspect-[4/3] w-full overflow-hidden relative"><div className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url('${project.image}')`, filter: 'brightness(0.8) contrast(1.2)' }}><div className="absolute inset-0 bg-gradient-to-t from-[#0a0f14] via-transparent to-transparent opacity-90"></div></div><div className={`absolute top-4 right-4 bg-${project.color === 'primary' ? 'primary' : 'purple-500'}/20 backdrop-blur-md border border-${project.color === 'primary' ? 'primary' : 'purple-500'}/30 text-${project.color === 'primary' ? 'primary' : 'purple-300'} text-xs font-bold px-3 py-1 rounded-full`}>{project.category}</div></div>
+                    <div className="absolute bottom-0 left-0 w-full p-6"><h3 className={`text-xl font-bold text-white group-hover:text-${project.color} transition-colors`}>{project.title}</h3><p className="mt-2 text-sm text-slate-400 line-clamp-2">{project.description}</p><div className="mt-4 flex gap-2">{project.tags.map(tag => (<span key={tag} className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{tag}</span>))}</div></div>
                   </div>
                 ))}
               </div>
@@ -1894,43 +1812,11 @@
           <section id="about" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#050505] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 blur-[100px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/10 blur-[100px] rounded-full pointer-events-none"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 bg-gradient-to-b from-transparent to-slate-800"></div>
             <div className="mx-auto max-w-4xl relative z-10">
-              <div className="mb-16 text-center">
-                <h2 className="text-3xl font-bold text-white sm:text-4xl"><span className="text-primary">Tech</span> & <span className="text-secondary">Science</span> Stack</h2>
-              </div>
+              <div className="mb-16 text-center"><h2 className="text-3xl font-bold text-white sm:text-4xl"><span className="text-primary">Tech</span> & <span className="text-secondary">Science</span> Stack</h2></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                <div className="space-y-6 order-2 md:order-1">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2"><span className="material-symbols-outlined text-secondary">science</span> Scientific Methodology</h3>
-                  <p className="text-slate-400 leading-relaxed">I am driven by an unyielding curiosity to understand the mechanisms of our universe. I treat every project with extreme patience and carefulness, ensuring that every detail is accounted for.</p>
-                  <div className="pt-4"><a href="#" className="inline-flex items-center text-white border-b border-primary pb-1 hover:text-primary transition-colors font-medium">Analyze Resume <span className="material-symbols-outlined ml-2 text-lg">download</span></a></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 order-1 md:order-2">
-                  {TECH_STACK.map((tech) => (
-                    <div key={tech.title} className={`bg-surface-dark/50 backdrop-blur-sm p-5 rounded-lg border border-slate-800 hover:border-${tech.color.includes('primary') ? 'primary' : 'secondary'} transition-all group`}>
-                      <span className={`material-symbols-outlined ${tech.color} mb-3 text-3xl group-hover:scale-110 transition-transform`}>{tech.icon}</span>
-                      <h4 className="text-white font-bold text-sm uppercase tracking-wider">{tech.title}</h4>
-                      <p className="text-xs text-slate-500 mt-1 font-mono">{tech.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        );
-      };
-
-      const Contact = () => {
-        return (
-           <section id="contact" className="py-32 px-4 sm:px-6 relative overflow-hidden bg-void">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] bg-secondary/10 blur-[100px] rounded-full"></div>
-            <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-secondary/50 to-transparent"></div>
-            <div className="mx-auto max-w-2xl text-center relative z-10">
-              <h2 className="text-4xl font-black text-white mb-6 sm:text-6xl tracking-tighter">Signal Received?</h2>
-              <p className="text-lg text-slate-400 mb-12 font-light">Ready to collaborate on the next frontier of web design? <br className="hidden sm:block"/> My frequency is open for new opportunities.</p>
-              <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <a href="mailto:nguyennhathanhhuy@gmail.com" className="flex items-center justify-center gap-3 bg-[#0a0f14] hover:bg-[#131b24] border border-slate-800 hover:border-secondary text-white px-8 py-4 rounded-lg transition-all group shadow-lg hover:shadow-neon-purple"><span className="material-symbols-outlined text-secondary group-hover:animate-pulse">mail</span><span className="font-medium tracking-wide">nguyennhathanhhuy@gmail.com</span></a>
-                <div className="flex gap-4 justify-center items-center">{['GitHub', 'LinkedIn'].map((platform) => (<a key={platform} href="#" className={`h-14 w-14 flex items-center justify-center rounded-lg bg-[#0a0f14] border border-slate-800 text-slate-400 hover:text-white hover:border-${platform === 'GitHub' ? 'primary' : 'secondary'} hover:shadow-${platform === 'GitHub' ? 'neon' : 'neon-purple'} transition-all`} aria-label={platform}><span className="material-symbols-outlined">{platform === 'GitHub' ? 'code_blocks' : 'person_search'}</span></a>))}</div>
+                <div className="space-y-6 order-2 md:order-1"><h3 className="text-xl font-bold text-white flex items-center gap-2"><span className="material-symbols-outlined text-secondary">science</span> Scientific Methodology</h3><p className="text-slate-400 leading-relaxed">I am driven by an unyielding curiosity to understand the mechanisms of our universe. I treat every project with extreme patience and carefulness, ensuring that every detail is accounted for.</p><div className="pt-4"><a href="#" className="inline-flex items-center text-white border-b border-primary pb-1 hover:text-primary transition-colors font-medium">Analyze Resume <span className="material-symbols-outlined ml-2 text-lg">download</span></a></div></div>
+                <div className="grid grid-cols-2 gap-4 order-1 md:order-2">{TECH_STACK.map((tech) => (<div key={tech.title} className={`bg-surface-dark/50 backdrop-blur-sm p-5 rounded-lg border border-slate-800 hover:border-${tech.color.includes('primary') ? 'primary' : 'secondary'} transition-all group`}><span className={`material-symbols-outlined ${tech.color} mb-3 text-3xl group-hover:scale-110 transition-transform`}>{tech.icon}</span><h4 className="text-white font-bold text-sm uppercase tracking-wider">{tech.title}</h4><p className="text-xs text-slate-500 mt-1 font-mono">{tech.desc}</p></div>))}</div>
               </div>
             </div>
           </section>
@@ -1958,6 +1844,10 @@
             <Footer />
 
             {/* Overlays */}
+            {activeProject === 'decay' && (
+                <DecayChallenge onClose={() => setActiveProject(null)} />
+            )}
+
             {activeProject === 'molecular' && (
                 <MolecularViewer onClose={() => setActiveProject(null)} />
             )}
@@ -1973,18 +1863,4 @@
       root.render(<App />);
     </script>
   </body>
-</html>--- START OF FILE README.md ---
-
-# Thanh Huy Portfolio
-
-An interactive portfolio built with React, Three.js, and Tailwind CSS.
-This project uses an `index.html` structure with embedded Babel scripts to ensure full compatibility with static hosting environments that might not have a build step for TSX files.
-
-## Features
-- **3D Molecular Viewer**: Explore chemical structures like Benzene and Glucopyranose in 3D.
-- **Eclipse Simulation**: Visualize solar eclipses with dynamic orbital mechanics.
-- **Black Hole Hero Section**: Canvas-based interactive background.
-
-## Development
-- All application logic resides in `index.html`.
-- `App.tsx` and `index.tsx` are deprecated placeholders.
+</html>
