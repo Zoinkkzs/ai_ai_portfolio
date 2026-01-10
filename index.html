@@ -528,6 +528,16 @@
             if (typeof THREE.OrbitControls !== 'undefined') {
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.enablePan = true;
+                controls.screenSpacePanning = true;
+                
+                // Remap controls: Middle Mouse (Scroll Click) to Pan
+                controls.mouseButtons = {
+                    LEFT: THREE.MOUSE.ROTATE,
+                    MIDDLE: THREE.MOUSE.PAN,
+                    RIGHT: THREE.MOUSE.DOLLY
+                };
             } else {
                 console.warn("OrbitControls not available");
             }
@@ -581,6 +591,11 @@
             ];
             
             const planetMeshes = [];
+            
+            // Trail Setup
+            const planetTrails = [];
+            const TRAIL_LENGTH = 400; // Increased from 60
+
             PLANET_DATA.forEach(p => {
                 const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 32, 32), new THREE.MeshLambertMaterial({ color: p.color }));
                 mesh.castShadow = true;
@@ -589,12 +604,37 @@
                 pivot.add(mesh);
                 mesh.position.x = p.dist;
                 solarSystem.add(pivot);
-                planetMeshes.push({ pivot, speed: p.speed });
+                planetMeshes.push({ pivot, speed: p.speed, mesh }); // Store mesh ref for trails
                 if(p.ring) {
                     const ring = new THREE.Mesh(new THREE.RingGeometry(p.r * 1.4, p.r * 2.2, 32), new THREE.MeshBasicMaterial({ color: 0xaaaaaa, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
                     ring.rotation.x = Math.PI / 2;
                     mesh.add(ring);
                 }
+
+                // Create Trail
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(TRAIL_LENGTH * 3);
+                const colors = new Float32Array(TRAIL_LENGTH * 3);
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.LineBasicMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
+
+                const line = new THREE.Line(geometry, material);
+                scene.add(line); // Add to scene (world coordinates)
+
+                planetTrails.push({
+                    mesh: mesh,
+                    line: line,
+                    geometry: geometry,
+                    points: []
+                });
             });
 
             // Earth System
@@ -661,6 +701,42 @@
                 // 2. Orbital Updates
                 // Planets
                 planetMeshes.forEach(p => { p.pivot.rotation.y = time * 0.1 * p.speed; });
+                
+                // Update Trails
+                if (viewMode === 'space') {
+                    planetTrails.forEach(trail => {
+                        trail.line.visible = true;
+                        const worldPos = new THREE.Vector3();
+                        trail.mesh.getWorldPosition(worldPos);
+
+                        trail.points.push(worldPos);
+                        if (trail.points.length > TRAIL_LENGTH) {
+                            trail.points.shift();
+                        }
+
+                        const positions = trail.geometry.attributes.position.array;
+                        const colors = trail.geometry.attributes.color.array;
+                        
+                        for (let i = 0; i < trail.points.length; i++) {
+                            const p = trail.points[i];
+                            positions[i * 3] = p.x;
+                            positions[i * 3 + 1] = p.y;
+                            positions[i * 3 + 2] = p.z;
+
+                            // Fade from 0 (tail) to 1 (head)
+                            const intensity = (i / (trail.points.length - 1)) || 0;
+                            colors[i * 3] = intensity;
+                            colors[i * 3 + 1] = intensity;
+                            colors[i * 3 + 2] = intensity;
+                        }
+
+                        trail.geometry.setDrawRange(0, trail.points.length);
+                        trail.geometry.attributes.position.needsUpdate = true;
+                        trail.geometry.attributes.color.needsUpdate = true;
+                    });
+                } else {
+                    planetTrails.forEach(trail => trail.line.visible = false);
+                }
                 
                 // Earth Orbit around Sun
                 earthOrbitPivot.rotation.y = time * 0.05; 
@@ -1270,7 +1346,8 @@
                                     side: THREE.DoubleSide
                                 });
                                 const lobe = new THREE.Mesh(lobeGeo, lobeMat);
-                                lobe.position.set(pos.x, pos.y + (isUp ? 0.5 : -0.5), pos.z + 0.2);
+                                // NEW: Removed Z offset +0.2 to center on atom
+                                lobe.position.set(pos.x, pos.y + (isUp ? 0.5 : -0.5), pos.z);
                                 moleculeGroup.add(lobe);
                             };
                             createLobe(source, true);
@@ -1896,4 +1973,18 @@
       root.render(<App />);
     </script>
   </body>
-</html>
+</html>--- START OF FILE README.md ---
+
+# Thanh Huy Portfolio
+
+An interactive portfolio built with React, Three.js, and Tailwind CSS.
+This project uses an `index.html` structure with embedded Babel scripts to ensure full compatibility with static hosting environments that might not have a build step for TSX files.
+
+## Features
+- **3D Molecular Viewer**: Explore chemical structures like Benzene and Glucopyranose in 3D.
+- **Eclipse Simulation**: Visualize solar eclipses with dynamic orbital mechanics.
+- **Black Hole Hero Section**: Canvas-based interactive background.
+
+## Development
+- All application logic resides in `index.html`.
+- `App.tsx` and `index.tsx` are deprecated placeholders.
