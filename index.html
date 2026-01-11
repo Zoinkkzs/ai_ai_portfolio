@@ -353,7 +353,7 @@
         const [status, setStatus] = useState("idle"); 
         const [animProgress, setAnimProgress] = useState(0); 
         const [isPlaying, setIsPlaying] = useState(false);
-        const simState = useRef({ progress: 0, isPlaying: false, decayType: "Beta Minus" });
+        const simState = useRef({ progress: 0, isPlaying: false, decayType: "Beta Minus", transmuted: false });
 
         useEffect(() => { 
             simState.current.isPlaying = isPlaying; 
@@ -378,7 +378,17 @@
             if (isMainCorrect && isLeftCorrect && isSecProdCorrect && isRightCorrect) { setStatus("correct"); setIsPlaying(true); } else { setStatus("wrong"); }
         };
         
-        useEffect(() => { setProductMain({ mass: "", atomic: "", symbol: "" }); setProductSec({ mass: "", atomic: "", symbol: "" }); setParticleInputLeft(""); setParticleInputRight(""); setStatus("idle"); setAnimProgress(0); setIsPlaying(false); simState.current.progress = 0; }, [selectedIsotope]);
+        useEffect(() => { 
+          setProductMain({ mass: "", atomic: "", symbol: "" }); 
+          setProductSec({ mass: "", atomic: "", symbol: "" }); 
+          setParticleInputLeft(""); 
+          setParticleInputRight(""); 
+          setStatus("idle"); 
+          setAnimProgress(0); 
+          setIsPlaying(false); 
+          simState.current.progress = 0; 
+          simState.current.transmuted = false;
+        }, [selectedIsotope]);
         
         useEffect(() => {
             if (!mountRef.current || !window.THREE) return;
@@ -394,6 +404,9 @@
             const electronGroup = new THREE.Group(); scene.add(electronGroup);
             const ejectionGroup = new THREE.Group(); scene.add(ejectionGroup);
             
+            const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 }); 
+            const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 50 });
+
             let capturedElectronMesh = null;
 
             const generateNucleusAndEjecta = () => {
@@ -404,16 +417,13 @@
                 const visualProtons = selectedIsotope.atomic; 
                 const visualNeutrons = selectedIsotope.mass - selectedIsotope.atomic;
                 
-                // Tighter, smaller particles for dense packing
+                // Tighter packing logic
                 const particleRadius = 0.2;
                 const geometry = new THREE.SphereGeometry(particleRadius, 16, 16);
-                const pMat = new THREE.MeshPhongMaterial({ color: 0xff3333, shininess: 80 }); 
-                const nMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 50 });
                 
-                // Calculate cluster radius for dense packing
-                // Volume ~ proportional to mass number
                 const totalParticles = visualProtons + visualNeutrons;
-                const clusterRadius = Math.pow(totalParticles, 1/3) * particleRadius * 1.5;
+                // Condensed cluster radius for "dense" look
+                const clusterRadius = Math.pow(totalParticles, 1/3) * particleRadius * 1.1;
 
                 const particles = [];
                 for(let i=0; i<visualProtons; i++) particles.push({ type: 'proton', mat: pMat });
@@ -440,12 +450,22 @@
                     const r = Math.pow(Math.random(), 1/3) * clusterRadius;
                     const theta = Math.random() * Math.PI * 2; const phi = Math.acos(2 * Math.random() - 1);
                     mesh.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+                    mesh.userData = { type: p.type };
+                    
+                    // Assign target material for transmutation
+                    if (selectedIsotope.type === "Beta Minus" && p.type === 'neutron') {
+                         mesh.userData.targetMat = pMat; // Neutron becomes Proton
+                         mesh.userData.targetType = 'proton';
+                    } else if (selectedIsotope.type === "Electron Capture" && p.type === 'proton') {
+                         mesh.userData.targetMat = nMat; // Proton becomes Neutron
+                         mesh.userData.targetType = 'neutron';
+                    }
+
                     nucleusGroup.add(mesh);
                 });
 
                 if (selectedIsotope.type === "Alpha") {
                     const alphaObj = new THREE.Group();
-                    // Arrange alpha particles in a small tetrahedron
                     const alphaPositions = [
                         new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(particleRadius),
                         new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(particleRadius),
@@ -532,6 +552,29 @@
                 }
 
                 const p = simState.current.progress / 100;
+
+                // Handle Transmutation (change model after process starts)
+                if (isPlaying && p > 0.05 && !simState.current.transmuted) {
+                    let swapped = false;
+                    for (let child of nucleusGroup.children) {
+                        if (child.userData.targetMat) {
+                            child.material = child.userData.targetMat;
+                            child.userData.type = child.userData.targetType;
+                            child.userData.targetMat = null; // Ensure only one swaps if we wanted single (but logic above assigns to all matching types?? No, logic above loops all. Wait.)
+                            // Fix: The generator loop assigns targetMat to ALL matching particles? 
+                            // No, we need exactly ONE swap for Beta/EC. 
+                            // Let's optimize the generator to only tag one particle.
+                            
+                            swapped = true;
+                            break; // Only swap one nucleon per decay event
+                        }
+                    }
+                    // Since the generator loop assigned targetMat to *any* match, the loop above breaks after first swap, which is correct.
+                    // But we should refine generator to only tag ONE particle to be safe.
+                    // Actually, the loop above breaks after one swap. That works.
+                    simState.current.transmuted = true;
+                }
+
                 ejectionGroup.children.forEach(obj => {
                     const dir = obj.userData.dir;
                     if (obj.userData.type === 'alpha') {
